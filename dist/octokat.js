@@ -13188,13 +13188,15 @@ PAGED_RESULTS = new (PagedResults = (function() {
 HYPERMEDIA = new (HyperMedia = (function() {
   function HyperMedia() {}
 
-  HyperMedia.prototype.replace = function(requestFn, o) {
-    if (Array.isArray(o)) {
-      return this._replaceArray(requestFn, o);
-    } else if (o === Object(o)) {
-      return this._replaceObject(requestFn, o);
+  HyperMedia.prototype.replace = function(requestFn, data) {
+    if (Array.isArray(data)) {
+      return this._replaceArray(requestFn, data);
+    } else if (typeof data === 'function') {
+      return data;
+    } else if (data === Object(data)) {
+      return this._replaceObject(requestFn, data);
     } else {
-      return o;
+      return data;
     }
   };
 
@@ -13468,7 +13470,7 @@ module.exports = plus;
 
 
 },{}],13:[function(require,module,exports){
-var DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, Request, _, _cachedETags, ajax, base64encode, userAgent;
+var ALL_PLUGINS, DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, Request, _, _cachedETags, ajax, base64encode, userAgent;
 
 _ = require('lodash');
 
@@ -13482,7 +13484,7 @@ MIDDLEWARE_RESPONSE_PLUGINS = require('./plugin-middleware-response');
 
 MIDDLEWARE_CACHE_HANDLER = require('./plugin-cache-handler');
 
-MIDDLEWARE_RESPONSE_PLUGINS['CACHE_HANDLER'] = MIDDLEWARE_CACHE_HANDLER;
+ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([MIDDLEWARE_RESPONSE_PLUGINS.PAGED_RESULTS, MIDDLEWARE_RESPONSE_PLUGINS.HYPERMEDIA, MIDDLEWARE_RESPONSE_PLUGINS.CAMEL_CASE, MIDDLEWARE_CACHE_HANDLER]);
 
 if (typeof window === "undefined" || window === null) {
   userAgent = 'octokat.js';
@@ -13555,7 +13557,7 @@ Request = function(clientOptions) {
   }
   emitter = clientOptions.emitter;
   requestFn = function(method, path, data, options, cb) {
-    var acc, ajaxConfig, headers, j, len, mimeType, plugin, ref, ref1;
+    var acc, ajaxConfig, headers, j, len, mimeType, plugin, ref;
     if (options == null) {
       options = {
         isRaw: false,
@@ -13592,18 +13594,19 @@ Request = function(clientOptions) {
       clientOptions: clientOptions,
       headers: headers
     };
-    ref = MIDDLEWARE_REQUEST_PLUGINS.concat([MIDDLEWARE_CACHE_HANDLER]);
-    for (j = 0, len = ref.length; j < len; j++) {
-      plugin = ref[j];
-      ref1 = plugin.requestMiddleware(acc) || {}, method = ref1.method, headers = ref1.headers, mimeType = ref1.mimeType;
-      if (method) {
-        acc.method = method;
-      }
-      if (mimeType) {
-        acc.mimeType = mimeType;
-      }
-      if (headers) {
-        _.extend(acc.headers, headers);
+    for (j = 0, len = ALL_PLUGINS.length; j < len; j++) {
+      plugin = ALL_PLUGINS[j];
+      if (plugin.requestMiddleware) {
+        ref = plugin.requestMiddleware(acc) || {}, method = ref.method, headers = ref.headers, mimeType = ref.mimeType;
+        if (method) {
+          acc.method = method;
+        }
+        if (mimeType) {
+          acc.mimeType = mimeType;
+        }
+        if (headers) {
+          _.extend(acc.headers, headers);
+        }
       }
     }
     method = acc.method, headers = acc.headers, mimeType = acc.mimeType;
@@ -13645,7 +13648,7 @@ Request = function(clientOptions) {
       emitter.emit('start', method, path, data, options);
     }
     return ajax(ajaxConfig, function(err, val) {
-      var acc2, converted, emitterRate, i, jqXHR, json, k, key, rateLimit, rateLimitRemaining, rateLimitReset, ref2, value;
+      var acc2, converted, emitterRate, i, jqXHR, json, k, l, len1, rateLimit, rateLimitRemaining, rateLimitReset, ref1;
       jqXHR = err || val;
       if (emitter) {
         rateLimit = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Limit'));
@@ -13677,10 +13680,12 @@ Request = function(clientOptions) {
               request: acc,
               requestFn: requestFn
             };
-            for (key in MIDDLEWARE_RESPONSE_PLUGINS) {
-              value = MIDDLEWARE_RESPONSE_PLUGINS[key];
-              acc2 = value.responseMiddleware(acc);
-              _.extend(acc, acc2);
+            for (k = 0, len1 = ALL_PLUGINS.length; k < len1; k++) {
+              plugin = ALL_PLUGINS[k];
+              if (plugin.responseMiddleware) {
+                acc2 = plugin.responseMiddleware(acc);
+                _.extend(acc, acc2);
+              }
             }
             data = acc.data;
           } else {
@@ -13688,7 +13693,7 @@ Request = function(clientOptions) {
           }
           if (method === 'GET' && options.isBase64) {
             converted = '';
-            for (i = k = 0, ref2 = data.length; 0 <= ref2 ? k < ref2 : k > ref2; i = 0 <= ref2 ? ++k : --k) {
+            for (i = l = 0, ref1 = data.length; 0 <= ref1 ? l < ref1 : l > ref1; i = 0 <= ref1 ? ++l : --l) {
               converted += String.fromCharCode(data.charCodeAt(i) & 0xff);
             }
             data = converted;
