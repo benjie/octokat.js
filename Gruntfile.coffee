@@ -123,7 +123,7 @@ module.exports = (grunt) ->
           'dist/node/plugin-cache-handler.js' : 'src/plugin-cache-handler.coffee'
           'dist/node/octokat.js'        : 'src/octokat.coffee'
           'dist/node/plus.js'           : 'src/plus.coffee'
-          'dist/node/replacer.js'       : 'src/replacer.coffee'
+          # 'dist/node/replacer.js'       : 'src/replacer.coffee'
           'dist/node/request.js'        : 'src/request.coffee'
           'dist/node/verb-methods.js'   : 'src/verb-methods.coffee'
 

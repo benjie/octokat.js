@@ -12400,7 +12400,7 @@ Chainer = function(request, path, name, contextTree, fn) {
 module.exports = Chainer;
 
 
-},{"./plus":12,"./verb-methods":15}],3:[function(require,module,exports){
+},{"./plus":12,"./verb-methods":14}],3:[function(require,module,exports){
 var DEFAULT_HEADER, OBJECT_MATCHER, PREVIEW_HEADERS, TREE_OPTIONS, URL_VALIDATOR;
 
 URL_VALIDATOR = /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/(zen|octocat|users|organizations|issues|gists|emojis|markdown|meta|rate_limit|feeds|events|notifications|notifications\/threads(\/[^\/]+)|notifications\/threads(\/[^\/]+)\/subscription|gitignore\/templates(\/[^\/]+)?|user|user\/(repos|orgs|followers|following(\/[^\/]+)?|emails(\/[^\/]+)?|issues|starred|starred(\/[^\/]+){2}|teams)|orgs\/[^\/]+|orgs\/[^\/]+\/(repos|issues|members|events|teams)|teams\/[^\/]+|teams\/[^\/]+\/(members(\/[^\/]+)?|memberships\/[^\/]+|repos|repos(\/[^\/]+){2})|users\/[^\/]+|users\/[^\/]+\/(repos|orgs|gists|followers|following(\/[^\/]+){0,2}|keys|starred|received_events(\/public)?|events(\/public)?|events\/orgs\/[^\/]+)|search\/(repositories|issues|users|code)|gists\/(public|starred|([a-f0-9]{20}|[0-9]+)|([a-f0-9]{20}|[0-9]+)\/forks|([a-f0-9]{20}|[0-9]+)\/comments(\/[0-9]+)?|([a-f0-9]{20}|[0-9]+)\/star)|repos(\/[^\/]+){2}|repos(\/[^\/]+){2}\/(readme|tarball(\/[^\/]+)?|zipball(\/[^\/]+)?|compare\/([^\.{3}]+)\.{3}([^\.{3}]+)|deployments(\/[0-9]+)?|deployments\/[0-9]+\/statuses(\/[0-9]+)?|hooks|hooks\/[^\/]+|hooks\/[^\/]+\/tests|hooks\/[^\/]+\/pings|assignees|languages|teams|tags|branches(\/[^\/]+){0,2}|contributors|subscribers|subscription|stargazers|comments(\/[0-9]+)?|downloads(\/[0-9]+)?|forks|milestones|milestones\/[0-9]+|milestones\/[0-9]+\/labels|labels(\/[^\/]+)?|releases|releases\/([0-9]+)|releases\/([0-9]+)\/assets|releases\/latest|releases\/tags\/([^\/]+)|releases\/assets\/([0-9]+)|events|notifications|merges|statuses\/[^\/]+|pages|pages\/builds|pages\/builds\/latest|commits|commits\/[^\/]+|commits\/[^\/]+\/(comments|status|statuses)?|contents\/|contents(\/[^\/]+)*|collaborators(\/[^\/]+)?|(issues|pulls)|(issues|pulls)\/(events|events\/[0-9]+|comments(\/[0-9]+)?|[0-9]+|[0-9]+\/events|[0-9]+\/comments|[0-9]+\/labels(\/[^\/]+)?)|pulls\/[0-9]+\/(files|commits|merge)|git\/(refs|refs\/(.+|heads(\/[^\/]+)?|tags(\/[^\/]+)?)|trees(\/[^\/]+)?|blobs(\/[a-f0-9]{40}$)?|commits(\/[a-f0-9]{40}$)?)|stats\/(contributors|commit_activity|code_frequency|participation|punch_card))|licenses|licenses\/([^\/]+)|authorizations|authorizations\/((\d+)|clients\/([^\/]{20})|clients\/([^\/]{20})\/([^\/]+))|applications\/([^\/]{20})\/tokens|applications\/([^\/]{20})\/tokens\/([^\/]+)|enterprise\/(settings\/license|stats\/(issues|hooks|milestones|orgs|comments|pages|users|gists|pulls|repos|all))|staff\/indexing_jobs|users\/[^\/]+\/(site_admin|suspended)|setup\/api\/(start|upgrade|configcheck|configure|settings(authorized-keys)?|maintenance))$/;
@@ -12809,7 +12809,7 @@ module.exports = toQueryString;
 
 },{}],7:[function(require,module,exports){
 (function (global){
-var CAMEL_CASE, Chainer, OBJECT_MATCHER, Octokat, Replacer, Request, TREE_OPTIONS, injectVerbMethods, parse, plus, reChainChildren, ref, toPromise;
+var CAMEL_CASE, Chainer, HYPERMEDIA, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, injectVerbMethods, parse, plus, reChainChildren, ref, ref1, toPromise, uncamelizeObj;
 
 plus = require('./plus');
 
@@ -12819,23 +12819,21 @@ Chainer = require('./chainer');
 
 injectVerbMethods = require('./verb-methods');
 
-Replacer = require('./replacer');
-
-CAMEL_CASE = require('./plugin-middleware-response').CAMEL_CASE;
+ref1 = require('./plugin-middleware-response'), CAMEL_CASE = ref1.CAMEL_CASE, HYPERMEDIA = ref1.HYPERMEDIA;
 
 Request = require('./request');
 
 toPromise = require('./helper-promise').toPromise;
 
 reChainChildren = function(request, url, obj) {
-  var context, i, k, key, len, re, ref1;
+  var context, j, k, key, len, re, ref2;
   for (key in OBJECT_MATCHER) {
     re = OBJECT_MATCHER[key];
     if (re.test(obj.url)) {
       context = TREE_OPTIONS;
-      ref1 = key.split('.');
-      for (i = 0, len = ref1.length; i < len; i++) {
-        k = ref1[i];
+      ref2 = key.split('.');
+      for (j = 0, len = ref2.length; j < len; j++) {
+        k = ref2[j];
         context = context[k];
       }
       Chainer(request, url, k, context, obj);
@@ -12844,21 +12842,49 @@ reChainChildren = function(request, url, obj) {
   return obj;
 };
 
-parse = function(obj, path, request) {
-  var replacer, url;
+parse = function(obj, path, requestFn) {
+  var url;
   url = obj.url || path;
   if (url) {
-    replacer = new Replacer(request);
-    obj = replacer.replace(obj);
+    obj = HYPERMEDIA.responseMiddleware({
+      requestFn: requestFn,
+      data: obj
+    }).data;
     obj = CAMEL_CASE.responseMiddleware({
       data: obj
     }).data;
-    Chainer(request, url, true, {}, obj);
-    reChainChildren(request, url, obj);
+    Chainer(requestFn, url, true, {}, obj);
+    reChainChildren(requestFn, url, obj);
   } else {
-    Chainer(request, '', null, TREE_OPTIONS, obj);
+    Chainer(requestFn, '', null, TREE_OPTIONS, obj);
   }
   return obj;
+};
+
+uncamelizeObj = function(obj) {
+  var i, j, key, len, o, ref2, value;
+  if (Array.isArray(obj)) {
+    return (function() {
+      var j, len, results;
+      results = [];
+      for (j = 0, len = obj.length; j < len; j++) {
+        i = obj[j];
+        results.push(uncamelizeObj(i));
+      }
+      return results;
+    })();
+  } else if (obj === Object(obj)) {
+    o = {};
+    ref2 = Object.keys(obj);
+    for (j = 0, len = ref2.length; j < len; j++) {
+      key = ref2[j];
+      value = obj[key];
+      o[plus.uncamelize(key)] = uncamelizeObj(value);
+    }
+    return o;
+  } else {
+    return obj;
+  }
 };
 
 Octokat = function(clientOptions) {
@@ -12871,7 +12897,7 @@ Octokat = function(clientOptions) {
     disableHypermedia = false;
   }
   request = function(method, path, data, options, cb) {
-    var _request, ref1, replacer;
+    var _request, ref2;
     if (options == null) {
       options = {
         raw: false,
@@ -12879,9 +12905,8 @@ Octokat = function(clientOptions) {
         isBoolean: false
       };
     }
-    replacer = new Replacer(request);
-    if (data && !(typeof global !== "undefined" && global !== null ? (ref1 = global['Buffer']) != null ? ref1.isBuffer(data) : void 0 : void 0)) {
-      data = replacer.uncamelize(data);
+    if (data && !(typeof global !== "undefined" && global !== null ? (ref2 = global['Buffer']) != null ? ref2.isBuffer(data) : void 0 : void 0)) {
+      data = uncamelizeObj(data);
     }
     _request = Request(clientOptions);
     return _request(method, path, data, options, function(err, val) {
@@ -12931,7 +12956,7 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./plugin-middleware-response":10,"./plus":12,"./replacer":13,"./request":14,"./verb-methods":15}],8:[function(require,module,exports){
+},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./plugin-middleware-response":10,"./plus":12,"./request":13,"./verb-methods":14}],8:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -13058,7 +13083,8 @@ module.exports = [USE_POST_INSTEAD_OF_PATCH, PREVIEW_APIS, AUTHORIZATION];
 
 
 },{"./grammar":3,"./helper-base64":4}],10:[function(require,module,exports){
-var CAMEL_CASE, CamelCase, Chainer, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, TREE_OPTIONS, plus, ref, toPromise, toQueryString;
+var CAMEL_CASE, CamelCase, Chainer, HYPERMEDIA, HyperMedia, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, TREE_OPTIONS, plus, ref, toPromise, toQueryString,
+  slice = [].slice;
 
 plus = require('./plus');
 
@@ -13095,11 +13121,11 @@ CAMEL_CASE = new (CamelCase = (function() {
   };
 
   CamelCase.prototype._replaceObject = function(orig) {
-    var acc, i, key, len, ref1, value;
+    var acc, j, key, len, ref1, value;
     acc = {};
     ref1 = Object.keys(orig);
-    for (i = 0, len = ref1.length; i < len; i++) {
-      key = ref1[i];
+    for (j = 0, len = ref1.length; j < len; j++) {
+      key = ref1[j];
       value = orig[key];
       this._replaceKeyValue(acc, key, value);
     }
@@ -13107,19 +13133,19 @@ CAMEL_CASE = new (CamelCase = (function() {
   };
 
   CamelCase.prototype._replaceArray = function(orig) {
-    var arr, i, item, key, len, ref1, value;
+    var arr, item, j, key, len, ref1, value;
     arr = (function() {
-      var i, len, results;
+      var j, len, results;
       results = [];
-      for (i = 0, len = orig.length; i < len; i++) {
-        item = orig[i];
+      for (j = 0, len = orig.length; j < len; j++) {
+        item = orig[j];
         results.push(this.replace(item));
       }
       return results;
     }).call(this);
     ref1 = Object.keys(orig);
-    for (i = 0, len = ref1.length; i < len; i++) {
-      key = ref1[i];
+    for (j = 0, len = ref1.length; j < len; j++) {
+      key = ref1[j];
       value = orig[key];
       this._replaceKeyValue(arr, key, value);
     }
@@ -13138,14 +13164,14 @@ PAGED_RESULTS = new (PagedResults = (function() {
   function PagedResults() {}
 
   PagedResults.prototype.responseMiddleware = function(arg) {
-    var data, discard, href, i, jqXHR, len, links, part, ref1, ref2, rel;
+    var data, discard, href, j, jqXHR, len, links, part, ref1, ref2, rel;
     jqXHR = arg.jqXHR, data = arg.data;
     if (Array.isArray(data)) {
       data = data.slice(0);
       links = jqXHR.getResponseHeader('Link');
       ref1 = (links != null ? links.split(',') : void 0) || [];
-      for (i = 0, len = ref1.length; i < len; i++) {
-        part = ref1[i];
+      for (j = 0, len = ref1.length; j < len; j++) {
+        part = ref1[j];
         ref2 = part.match(/<([^>]+)>;\ rel="([^"]+)"/), discard = ref2[0], href = ref2[1], rel = ref2[2];
         data[rel + "_page_url"] = href;
       }
@@ -13159,9 +13185,158 @@ PAGED_RESULTS = new (PagedResults = (function() {
 
 })());
 
+HYPERMEDIA = new (HyperMedia = (function() {
+  function HyperMedia() {}
+
+  HyperMedia.prototype.replace = function(requestFn, o) {
+    if (Array.isArray(o)) {
+      return this._replaceArray(requestFn, o);
+    } else if (o === Object(o)) {
+      return this._replaceObject(requestFn, o);
+    } else {
+      return o;
+    }
+  };
+
+  HyperMedia.prototype._replaceObject = function(requestFn, orig) {
+    var acc, context, j, k, key, l, len, len1, len2, n, re, ref1, ref2, ref3, url, value;
+    acc = {};
+    ref1 = Object.keys(orig);
+    for (j = 0, len = ref1.length; j < len; j++) {
+      key = ref1[j];
+      value = orig[key];
+      this._replaceKeyValue(requestFn, acc, key, value);
+    }
+    url = acc.url;
+    if (url) {
+      Chainer(requestFn, url, true, null, acc);
+    }
+    ref2 = Object.keys(OBJECT_MATCHER);
+    for (l = 0, len1 = ref2.length; l < len1; l++) {
+      key = ref2[l];
+      re = OBJECT_MATCHER[key];
+      if (re.test(url)) {
+        context = TREE_OPTIONS;
+        ref3 = key.split('.');
+        for (n = 0, len2 = ref3.length; n < len2; n++) {
+          k = ref3[n];
+          context = context[k];
+        }
+        Chainer(requestFn, url, k, context, acc);
+      }
+    }
+    return acc;
+  };
+
+  HyperMedia.prototype._replaceArray = function(requestFn, orig) {
+    var arr, item, j, key, len, ref1, value;
+    arr = (function() {
+      var j, len, results;
+      results = [];
+      for (j = 0, len = orig.length; j < len; j++) {
+        item = orig[j];
+        results.push(this.replace(requestFn, item));
+      }
+      return results;
+    }).call(this);
+    ref1 = Object.keys(orig);
+    for (j = 0, len = ref1.length; j < len; j++) {
+      key = ref1[j];
+      value = orig[key];
+      this._replaceKeyValue(requestFn, arr, key, value);
+    }
+    return arr;
+  };
+
+  HyperMedia.prototype._replaceKeyValue = function(requestFn, acc, key, value) {
+    var fn, newKey;
+    if (/_url$/.test(key)) {
+      fn = (function(_this) {
+        return function() {
+          var args, cb, contentType, data, i, j, len, m, match, optionalNames, param, paramName, ref1, ref2, url;
+          cb = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
+          if (!(/\{/.test(value) || /_page_url$/.test(key))) {
+            console.warn('Deprecation warning: Use the .fooUrl field instead of calling the method');
+          }
+          url = value;
+          i = 0;
+          while (m = /(\{[^\}]+\})/.exec(url)) {
+            match = m[1];
+            if (i < args.length) {
+              param = args[i];
+              switch (match[1]) {
+                case '/':
+                  param = "/" + param;
+                  break;
+                case '?':
+                  optionalNames = match.slice(2, -1).split(',');
+                  if (typeof param === 'object') {
+                    if (Object.keys(param).length === 0) {
+                      console.warn('Must pass in a dictionary with at least one key when there are multiple optional params');
+                    }
+                    ref1 = Object.keys(param);
+                    for (j = 0, len = ref1.length; j < len; j++) {
+                      paramName = ref1[j];
+                      if (optionalNames.indexOf(paramName) < 0) {
+                        console.warn("Invalid parameter '" + paramName + "' passed in as argument");
+                      }
+                    }
+                    param = toQueryString(param);
+                  } else {
+                    param = "?" + optionalNames[0] + "=" + param;
+                  }
+              }
+            } else {
+              param = '';
+              if (match[1] !== '/') {
+                throw new Error("BUG: Missing required parameter " + match);
+              }
+            }
+            url = url.replace(match, param);
+            i++;
+          }
+          if (/upload_url$/.test(key)) {
+            ref2 = args.slice(-2), contentType = ref2[0], data = ref2[1];
+            return requestFn('POST', url, data, {
+              contentType: contentType,
+              raw: true
+            }, cb);
+          } else {
+            return requestFn('GET', url, null, null, cb);
+          }
+        };
+      })(this);
+      fn = toPromise(fn);
+      fn.url = value;
+      newKey = key.substring(0, key.length - '_url'.length);
+      acc[newKey] = fn;
+      if (!/\{/.test(value)) {
+        return acc[key] = value;
+      }
+    } else if (/_at$/.test(key)) {
+      return acc[key] = value ? new Date(value) : null;
+    } else {
+      return acc[key] = this.replace(requestFn, value);
+    }
+  };
+
+  HyperMedia.prototype.responseMiddleware = function(arg) {
+    var data, requestFn;
+    requestFn = arg.requestFn, data = arg.data;
+    data = this.replace(requestFn, data);
+    return {
+      data: data
+    };
+  };
+
+  return HyperMedia;
+
+})());
+
 module.exports = {
   CAMEL_CASE: CAMEL_CASE,
-  PAGED_RESULTS: PAGED_RESULTS
+  PAGED_RESULTS: PAGED_RESULTS,
+  HYPERMEDIA: HYPERMEDIA
 };
 
 
@@ -13293,190 +13468,6 @@ module.exports = plus;
 
 
 },{}],13:[function(require,module,exports){
-var Chainer, OBJECT_MATCHER, Replacer, TREE_OPTIONS, plus, ref, toPromise, toQueryString,
-  slice = [].slice;
-
-plus = require('./plus');
-
-toPromise = require('./helper-promise').toPromise;
-
-toQueryString = require('./helper-querystring');
-
-ref = require('./grammar'), TREE_OPTIONS = ref.TREE_OPTIONS, OBJECT_MATCHER = ref.OBJECT_MATCHER;
-
-Chainer = require('./chainer');
-
-Replacer = (function() {
-  function Replacer(_request) {
-    this._request = _request;
-  }
-
-  Replacer.prototype.uncamelize = function(obj) {
-    var i, j, key, len, o, ref1, value;
-    if (Array.isArray(obj)) {
-      return (function() {
-        var j, len, results;
-        results = [];
-        for (j = 0, len = obj.length; j < len; j++) {
-          i = obj[j];
-          results.push(this.uncamelize(i));
-        }
-        return results;
-      }).call(this);
-    } else if (obj === Object(obj)) {
-      o = {};
-      ref1 = Object.keys(obj);
-      for (j = 0, len = ref1.length; j < len; j++) {
-        key = ref1[j];
-        value = obj[key];
-        o[plus.uncamelize(key)] = this.uncamelize(value);
-      }
-      return o;
-    } else {
-      return obj;
-    }
-  };
-
-  Replacer.prototype.replace = function(o) {
-    if (Array.isArray(o)) {
-      return this._replaceArray(o);
-    } else if (o === Object(o)) {
-      return this._replaceObject(o);
-    } else {
-      return o;
-    }
-  };
-
-  Replacer.prototype._replaceObject = function(orig) {
-    var acc, context, j, k, key, l, len, len1, len2, n, re, ref1, ref2, ref3, url, value;
-    acc = {};
-    ref1 = Object.keys(orig);
-    for (j = 0, len = ref1.length; j < len; j++) {
-      key = ref1[j];
-      value = orig[key];
-      this._replaceKeyValue(acc, key, value);
-    }
-    url = acc.url;
-    if (url) {
-      Chainer(this._request, url, true, null, acc);
-    }
-    ref2 = Object.keys(OBJECT_MATCHER);
-    for (l = 0, len1 = ref2.length; l < len1; l++) {
-      key = ref2[l];
-      re = OBJECT_MATCHER[key];
-      if (re.test(url)) {
-        context = TREE_OPTIONS;
-        ref3 = key.split('.');
-        for (n = 0, len2 = ref3.length; n < len2; n++) {
-          k = ref3[n];
-          context = context[k];
-        }
-        Chainer(this._request, url, k, context, acc);
-      }
-    }
-    return acc;
-  };
-
-  Replacer.prototype._replaceArray = function(orig) {
-    var arr, item, j, key, len, ref1, value;
-    arr = (function() {
-      var j, len, results;
-      results = [];
-      for (j = 0, len = orig.length; j < len; j++) {
-        item = orig[j];
-        results.push(this.replace(item));
-      }
-      return results;
-    }).call(this);
-    ref1 = Object.keys(orig);
-    for (j = 0, len = ref1.length; j < len; j++) {
-      key = ref1[j];
-      value = orig[key];
-      this._replaceKeyValue(arr, key, value);
-    }
-    return arr;
-  };
-
-  Replacer.prototype._replaceKeyValue = function(acc, key, value) {
-    var fn, newKey;
-    if (/_url$/.test(key)) {
-      fn = (function(_this) {
-        return function() {
-          var args, cb, contentType, data, i, j, len, m, match, optionalNames, param, paramName, ref1, ref2, url;
-          cb = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
-          if (!(/\{/.test(value) || /_page_url$/.test(key))) {
-            console.warn('Deprecation warning: Use the .fooUrl field instead of calling the method');
-          }
-          url = value;
-          i = 0;
-          while (m = /(\{[^\}]+\})/.exec(url)) {
-            match = m[1];
-            if (i < args.length) {
-              param = args[i];
-              switch (match[1]) {
-                case '/':
-                  param = "/" + param;
-                  break;
-                case '?':
-                  optionalNames = match.slice(2, -1).split(',');
-                  if (typeof param === 'object') {
-                    if (Object.keys(param).length === 0) {
-                      console.warn('Must pass in a dictionary with at least one key when there are multiple optional params');
-                    }
-                    ref1 = Object.keys(param);
-                    for (j = 0, len = ref1.length; j < len; j++) {
-                      paramName = ref1[j];
-                      if (optionalNames.indexOf(paramName) < 0) {
-                        console.warn("Invalid parameter '" + paramName + "' passed in as argument");
-                      }
-                    }
-                    param = toQueryString(param);
-                  } else {
-                    param = "?" + optionalNames[0] + "=" + param;
-                  }
-              }
-            } else {
-              param = '';
-              if (match[1] !== '/') {
-                throw new Error("BUG: Missing required parameter " + match);
-              }
-            }
-            url = url.replace(match, param);
-            i++;
-          }
-          if (/upload_url$/.test(key)) {
-            ref2 = args.slice(-2), contentType = ref2[0], data = ref2[1];
-            return _this._request('POST', url, data, {
-              contentType: contentType,
-              raw: true
-            }, cb);
-          } else {
-            return _this._request('GET', url, null, null, cb);
-          }
-        };
-      })(this);
-      fn = toPromise(fn);
-      fn.url = value;
-      newKey = key.substring(0, key.length - '_url'.length);
-      acc[newKey] = fn;
-      if (!/\{/.test(value)) {
-        return acc[key] = value;
-      }
-    } else if (/_at$/.test(key)) {
-      return acc[key] = value ? new Date(value) : null;
-    } else {
-      return acc[key] = this.replace(value);
-    }
-  };
-
-  return Replacer;
-
-})();
-
-module.exports = Replacer;
-
-
-},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./helper-querystring":6,"./plus":12}],14:[function(require,module,exports){
 var DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, Request, _, _cachedETags, ajax, base64encode, userAgent;
 
 _ = require('lodash');
@@ -13549,7 +13540,7 @@ DEFAULT_CACHE_HANDLER = {
 };
 
 Request = function(clientOptions) {
-  var emitter;
+  var emitter, requestFn;
   if (clientOptions == null) {
     clientOptions = {};
   }
@@ -13563,7 +13554,7 @@ Request = function(clientOptions) {
     clientOptions.usePostInsteadOfPatch = false;
   }
   emitter = clientOptions.emitter;
-  return function(method, path, data, options, cb) {
+  requestFn = function(method, path, data, options, cb) {
     var acc, ajaxConfig, headers, j, len, mimeType, plugin, ref, ref1;
     if (options == null) {
       options = {
@@ -13680,10 +13671,11 @@ Request = function(clientOptions) {
             data = JSON.parse(jqXHR.responseText);
             acc = {
               clientOptions: clientOptions,
-              jqXHR: jqXHR,
               data: data,
+              jqXHR: jqXHR,
               status: jqXHR.status,
-              request: acc
+              request: acc,
+              requestFn: requestFn
             };
             for (key in MIDDLEWARE_RESPONSE_PLUGINS) {
               value = MIDDLEWARE_RESPONSE_PLUGINS[key];
@@ -13722,12 +13714,13 @@ Request = function(clientOptions) {
       }
     });
   };
+  return requestFn;
 };
 
 module.exports = Request;
 
 
-},{"./grammar":3,"./helper-base64":4,"./plugin-cache-handler":8,"./plugin-middleware-request":9,"./plugin-middleware-response":10,"lodash":1}],15:[function(require,module,exports){
+},{"./grammar":3,"./helper-base64":4,"./plugin-cache-handler":8,"./plugin-middleware-request":9,"./plugin-middleware-response":10,"lodash":1}],14:[function(require,module,exports){
 var SIMPLE_VERBS_PLUGIN, URL_TESTER, URL_VALIDATOR, injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
