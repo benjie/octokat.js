@@ -12400,7 +12400,7 @@ Chainer = function(request, path, name, contextTree, fn) {
 module.exports = Chainer;
 
 
-},{"./plus":11,"./verb-methods":14}],3:[function(require,module,exports){
+},{"./plus":12,"./verb-methods":15}],3:[function(require,module,exports){
 var DEFAULT_HEADER, OBJECT_MATCHER, PREVIEW_HEADERS, TREE_OPTIONS, URL_VALIDATOR;
 
 URL_VALIDATOR = /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/(zen|octocat|users|organizations|issues|gists|emojis|markdown|meta|rate_limit|feeds|events|notifications|notifications\/threads(\/[^\/]+)|notifications\/threads(\/[^\/]+)\/subscription|gitignore\/templates(\/[^\/]+)?|user|user\/(repos|orgs|followers|following(\/[^\/]+)?|emails(\/[^\/]+)?|issues|starred|starred(\/[^\/]+){2}|teams)|orgs\/[^\/]+|orgs\/[^\/]+\/(repos|issues|members|events|teams)|teams\/[^\/]+|teams\/[^\/]+\/(members(\/[^\/]+)?|memberships\/[^\/]+|repos|repos(\/[^\/]+){2})|users\/[^\/]+|users\/[^\/]+\/(repos|orgs|gists|followers|following(\/[^\/]+){0,2}|keys|starred|received_events(\/public)?|events(\/public)?|events\/orgs\/[^\/]+)|search\/(repositories|issues|users|code)|gists\/(public|starred|([a-f0-9]{20}|[0-9]+)|([a-f0-9]{20}|[0-9]+)\/forks|([a-f0-9]{20}|[0-9]+)\/comments(\/[0-9]+)?|([a-f0-9]{20}|[0-9]+)\/star)|repos(\/[^\/]+){2}|repos(\/[^\/]+){2}\/(readme|tarball(\/[^\/]+)?|zipball(\/[^\/]+)?|compare\/([^\.{3}]+)\.{3}([^\.{3}]+)|deployments(\/[0-9]+)?|deployments\/[0-9]+\/statuses(\/[0-9]+)?|hooks|hooks\/[^\/]+|hooks\/[^\/]+\/tests|hooks\/[^\/]+\/pings|assignees|languages|teams|tags|branches(\/[^\/]+){0,2}|contributors|subscribers|subscription|stargazers|comments(\/[0-9]+)?|downloads(\/[0-9]+)?|forks|milestones|milestones\/[0-9]+|milestones\/[0-9]+\/labels|labels(\/[^\/]+)?|releases|releases\/([0-9]+)|releases\/([0-9]+)\/assets|releases\/latest|releases\/tags\/([^\/]+)|releases\/assets\/([0-9]+)|events|notifications|merges|statuses\/[^\/]+|pages|pages\/builds|pages\/builds\/latest|commits|commits\/[^\/]+|commits\/[^\/]+\/(comments|status|statuses)?|contents\/|contents(\/[^\/]+)*|collaborators(\/[^\/]+)?|(issues|pulls)|(issues|pulls)\/(events|events\/[0-9]+|comments(\/[0-9]+)?|[0-9]+|[0-9]+\/events|[0-9]+\/comments|[0-9]+\/labels(\/[^\/]+)?)|pulls\/[0-9]+\/(files|commits|merge)|git\/(refs|refs\/(.+|heads(\/[^\/]+)?|tags(\/[^\/]+)?)|trees(\/[^\/]+)?|blobs(\/[a-f0-9]{40}$)?|commits(\/[a-f0-9]{40}$)?)|stats\/(contributors|commit_activity|code_frequency|participation|punch_card))|licenses|licenses\/([^\/]+)|authorizations|authorizations\/((\d+)|clients\/([^\/]{20})|clients\/([^\/]{20})\/([^\/]+))|applications\/([^\/]{20})\/tokens|applications\/([^\/]{20})\/tokens\/([^\/]+)|enterprise\/(settings\/license|stats\/(issues|hooks|milestones|orgs|comments|pages|users|gists|pulls|repos|all))|staff\/indexing_jobs|users\/[^\/]+\/(site_admin|suspended)|setup\/api\/(start|upgrade|configcheck|configure|settings(authorized-keys)?|maintenance))$/;
@@ -12931,7 +12931,65 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./plugin-middleware-response":9,"./plus":11,"./replacer":12,"./request":13,"./verb-methods":14}],8:[function(require,module,exports){
+},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./plugin-middleware-response":10,"./plus":12,"./replacer":13,"./request":14,"./verb-methods":15}],8:[function(require,module,exports){
+var CacheMiddleware;
+
+module.exports = new (CacheMiddleware = (function() {
+  function CacheMiddleware() {
+    this._cachedETags = {};
+  }
+
+  CacheMiddleware.prototype.get = function(method, path) {
+    return this._cachedETags[method + " " + path];
+  };
+
+  CacheMiddleware.prototype.add = function(method, path, eTag, data, status) {
+    return this._cachedETags[method + " " + path] = {
+      eTag: eTag,
+      data: data,
+      status: status
+    };
+  };
+
+  CacheMiddleware.prototype.requestMiddleware = function(arg) {
+    var cacheHandler, clientOptions, headers, method, path;
+    clientOptions = arg.clientOptions, method = arg.method, path = arg.path;
+    headers = {};
+    cacheHandler = clientOptions.cacheHandler || this;
+    if (cacheHandler.get(method, path)) {
+      headers['If-None-Match'] = cacheHandler.get(method, path).eTag;
+    } else {
+      headers['If-Modified-Since'] = 'Thu, 01 Jan 1970 00:00:00 GMT';
+    }
+    return {
+      headers: headers
+    };
+  };
+
+  CacheMiddleware.prototype.responseMiddleware = function(arg) {
+    var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref, ref1, status;
+    clientOptions = arg.clientOptions, (ref = arg.request, method = ref.method, path = ref.path), status = arg.status, jqXHR = arg.jqXHR, data = arg.data;
+    cacheHandler = clientOptions.cacheHandler || this;
+    if (status === 304) {
+      ref1 = cacheHandler.get(method, path), data = ref1.data, status = ref1.status;
+    } else {
+      if (method === 'GET' && jqXHR.getResponseHeader('ETag')) {
+        eTag = jqXHR.getResponseHeader('ETag');
+        cacheHandler.add(method, path, eTag, data, jqXHR.status);
+      }
+    }
+    return {
+      data: data,
+      status: status
+    };
+  };
+
+  return CacheMiddleware;
+
+})());
+
+
+},{}],9:[function(require,module,exports){
 var AUTHORIZATION, DEFAULT_HEADER, PATH_TEST, PREVIEW_APIS, URL_VALIDATOR, USE_POST_INSTEAD_OF_PATCH, base64encode, ref;
 
 ref = require('./grammar'), URL_VALIDATOR = ref.URL_VALIDATOR, DEFAULT_HEADER = ref.DEFAULT_HEADER;
@@ -12999,7 +13057,7 @@ AUTHORIZATION = {
 module.exports = [USE_POST_INSTEAD_OF_PATCH, PREVIEW_APIS, AUTHORIZATION];
 
 
-},{"./grammar":3,"./helper-base64":4}],9:[function(require,module,exports){
+},{"./grammar":3,"./helper-base64":4}],10:[function(require,module,exports){
 var CAMEL_CASE, CamelCase, Chainer, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, TREE_OPTIONS, plus, ref, toPromise, toQueryString;
 
 plus = require('./plus');
@@ -13107,7 +13165,7 @@ module.exports = {
 };
 
 
-},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./helper-querystring":6,"./plus":11}],10:[function(require,module,exports){
+},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./helper-querystring":6,"./plus":12}],11:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
@@ -13192,7 +13250,7 @@ module.exports = {
 };
 
 
-},{"./helper-querystring":6}],11:[function(require,module,exports){
+},{"./helper-querystring":6}],12:[function(require,module,exports){
 var plus;
 
 plus = {
@@ -13234,7 +13292,7 @@ plus = {
 module.exports = plus;
 
 
-},{}],12:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var Chainer, OBJECT_MATCHER, Replacer, TREE_OPTIONS, plus, ref, toPromise, toQueryString,
   slice = [].slice;
 
@@ -13418,8 +13476,8 @@ Replacer = (function() {
 module.exports = Replacer;
 
 
-},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./helper-querystring":6,"./plus":11}],13:[function(require,module,exports){
-var DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, ETagResponse, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, Request, _, _cachedETags, ajax, base64encode, userAgent;
+},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./helper-querystring":6,"./plus":12}],14:[function(require,module,exports){
+var DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, Request, _, _cachedETags, ajax, base64encode, userAgent;
 
 _ = require('lodash');
 
@@ -13430,6 +13488,10 @@ DEFAULT_HEADER = require('./grammar').DEFAULT_HEADER;
 MIDDLEWARE_REQUEST_PLUGINS = require('./plugin-middleware-request');
 
 MIDDLEWARE_RESPONSE_PLUGINS = require('./plugin-middleware-response');
+
+MIDDLEWARE_CACHE_HANDLER = require('./plugin-cache-handler');
+
+MIDDLEWARE_RESPONSE_PLUGINS['CACHE_HANDLER'] = MIDDLEWARE_CACHE_HANDLER;
 
 if (typeof window === "undefined" || window === null) {
   userAgent = 'octokat.js';
@@ -13475,17 +13537,6 @@ ajax = function(options, cb) {
   return xhr.send(options.data);
 };
 
-ETagResponse = (function() {
-  function ETagResponse(eTag1, data1, status1) {
-    this.eTag = eTag1;
-    this.data = data1;
-    this.status = status1;
-  }
-
-  return ETagResponse;
-
-})();
-
 _cachedETags = {};
 
 DEFAULT_CACHE_HANDLER = {
@@ -13498,7 +13549,7 @@ DEFAULT_CACHE_HANDLER = {
 };
 
 Request = function(clientOptions) {
-  var cacheHandler, emitter;
+  var emitter;
   if (clientOptions == null) {
     clientOptions = {};
   }
@@ -13512,9 +13563,8 @@ Request = function(clientOptions) {
     clientOptions.usePostInsteadOfPatch = false;
   }
   emitter = clientOptions.emitter;
-  cacheHandler = clientOptions.cacheHandler || DEFAULT_CACHE_HANDLER;
   return function(method, path, data, options, cb) {
-    var acc, ajaxConfig, headers, j, len, mimeType, plugin, ref;
+    var acc, ajaxConfig, headers, j, len, mimeType, plugin, ref, ref1;
     if (options == null) {
       options = {
         isRaw: false,
@@ -13551,9 +13601,10 @@ Request = function(clientOptions) {
       clientOptions: clientOptions,
       headers: headers
     };
-    for (j = 0, len = MIDDLEWARE_REQUEST_PLUGINS.length; j < len; j++) {
-      plugin = MIDDLEWARE_REQUEST_PLUGINS[j];
-      ref = plugin.requestMiddleware(acc) || {}, method = ref.method, headers = ref.headers, mimeType = ref.mimeType;
+    ref = MIDDLEWARE_REQUEST_PLUGINS.concat([MIDDLEWARE_CACHE_HANDLER]);
+    for (j = 0, len = ref.length; j < len; j++) {
+      plugin = ref[j];
+      ref1 = plugin.requestMiddleware(acc) || {}, method = ref1.method, headers = ref1.headers, mimeType = ref1.mimeType;
       if (method) {
         acc.method = method;
       }
@@ -13603,7 +13654,7 @@ Request = function(clientOptions) {
       emitter.emit('start', method, path, data, options);
     }
     return ajax(ajaxConfig, function(err, val) {
-      var acc2, converted, eTag, eTagResponse, emitterRate, i, jqXHR, json, k, key, rateLimit, rateLimitRemaining, rateLimitReset, ref1, value;
+      var acc2, converted, emitterRate, i, jqXHR, json, k, key, rateLimit, rateLimitRemaining, rateLimitReset, ref2, value;
       jqXHR = err || val;
       if (emitter) {
         rateLimit = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Limit'));
@@ -13622,21 +13673,17 @@ Request = function(clientOptions) {
         emitter.emit('request', emitterRate, method, path, data, options, jqXHR.status);
       }
       if (!err) {
-        if (jqXHR.status === 304) {
-          if (clientOptions.useETags && cacheHandler.get(method, path)) {
-            eTagResponse = cacheHandler.get(method, path);
-            return cb(null, eTagResponse.data, eTagResponse.status, jqXHR);
-          } else {
-            return cb(null, jqXHR.responseText, jqXHR.status, jqXHR);
-          }
-        } else if (jqXHR.status === 302) {
+        if (jqXHR.status === 302) {
           return cb(null, jqXHR.getResponseHeader('Location'));
         } else if (!(jqXHR.status === 204 && options.isBoolean)) {
           if (jqXHR.responseText && ajaxConfig.dataType === 'json') {
             data = JSON.parse(jqXHR.responseText);
             acc = {
+              clientOptions: clientOptions,
               jqXHR: jqXHR,
-              data: data
+              data: data,
+              status: jqXHR.status,
+              request: acc
             };
             for (key in MIDDLEWARE_RESPONSE_PLUGINS) {
               value = MIDDLEWARE_RESPONSE_PLUGINS[key];
@@ -13649,14 +13696,10 @@ Request = function(clientOptions) {
           }
           if (method === 'GET' && options.isBase64) {
             converted = '';
-            for (i = k = 0, ref1 = data.length; 0 <= ref1 ? k < ref1 : k > ref1; i = 0 <= ref1 ? ++k : --k) {
+            for (i = k = 0, ref2 = data.length; 0 <= ref2 ? k < ref2 : k > ref2; i = 0 <= ref2 ? ++k : --k) {
               converted += String.fromCharCode(data.charCodeAt(i) & 0xff);
             }
             data = converted;
-          }
-          if (method === 'GET' && jqXHR.getResponseHeader('ETag') && clientOptions.useETags) {
-            eTag = jqXHR.getResponseHeader('ETag');
-            cacheHandler.add(method, path, eTag, data, jqXHR.status);
           }
           return cb(null, data, jqXHR.status, jqXHR);
         }
@@ -13684,7 +13727,7 @@ Request = function(clientOptions) {
 module.exports = Request;
 
 
-},{"./grammar":3,"./helper-base64":4,"./plugin-middleware-request":8,"./plugin-middleware-response":9,"lodash":1}],14:[function(require,module,exports){
+},{"./grammar":3,"./helper-base64":4,"./plugin-cache-handler":8,"./plugin-middleware-request":9,"./plugin-middleware-response":10,"lodash":1}],15:[function(require,module,exports){
 var SIMPLE_VERBS_PLUGIN, URL_TESTER, URL_VALIDATOR, injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
@@ -13731,5 +13774,5 @@ injectVerbMethods = function(request, path, obj) {
 module.exports = injectVerbMethods;
 
 
-},{"./grammar":3,"./helper-promise":5,"./helper-querystring":6,"./plugin-simple-verbs":10}]},{},[7])(7)
+},{"./grammar":3,"./helper-promise":5,"./helper-querystring":6,"./plugin-simple-verbs":11}]},{},[7])(7)
 });

@@ -120,6 +120,7 @@ module.exports = (grunt) ->
           'dist/node/plugin-simple-verbs.js'  : 'src/plugin-simple-verbs.coffee'
           'dist/node/plugin-middleware-request.js' : 'src/plugin-middleware-request.coffee'
           'dist/node/plugin-middleware-response.js' : 'src/plugin-middleware-response.coffee'
+          'dist/node/plugin-cache-handler.js' : 'src/plugin-cache-handler.coffee'
           'dist/node/octokat.js'        : 'src/octokat.coffee'
           'dist/node/plus.js'           : 'src/plus.coffee'
           'dist/node/replacer.js'       : 'src/replacer.coffee'
