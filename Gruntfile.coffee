@@ -117,6 +117,7 @@ module.exports = (grunt) ->
           'dist/node/helper-base64.js'  : 'src/helper-base64.coffee'
           'dist/node/helper-promise.js' : 'src/helper-promise.coffee'
           'dist/node/helper-querystring.js' : 'src/helper-querystring.coffee'
+          'dist/node/helper-hypermedia.js' : 'src/helper-hypermedia.coffee'
           'dist/node/plugin-simple-verbs.js'  : 'src/plugin-simple-verbs.coffee'
           'dist/node/plugin-middleware-request.js' : 'src/plugin-middleware-request.coffee'
           'dist/node/plugin-middleware-response.js' : 'src/plugin-middleware-response.coffee'

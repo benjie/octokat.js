@@ -140,6 +140,16 @@ define ['chai', 'cs!./test-config'], ({assert, expect}, {Octokat, client, USERNA
           expect(val).to.not.be.null
           done()
 
+      it 'supports hypermedia URLs', ->
+        expected = '/repos/AAA/BBB/releases/1/assets?name=CCC&label=DDD'
+        template = '/repos/{repoName}{/user}/releases/1/assets{?name,label}'
+        params =
+          name: 'CCC'
+          label: 'DDD'
+        # TODO: Fix the args to fromUrl
+        {url} = client.fromUrl(template, 'AAA', 'BBB', params)
+        expect(url).to.equal(expected)
+
       it 'supports octo.parse(json)', () ->
         json =
           url: 'https://api.github.com/repos/philschatz/octokat.js'
