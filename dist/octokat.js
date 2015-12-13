@@ -12809,7 +12809,7 @@ module.exports = toQueryString;
 
 },{}],7:[function(require,module,exports){
 (function (global){
-var CAMEL_CASE, Chainer, HYPERMEDIA, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, injectVerbMethods, parse, plus, reChainChildren, ref, ref1, toPromise, uncamelizeObj;
+var ALL_PLUGINS, CAMEL_CASE, Chainer, HYPERMEDIA, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, injectVerbMethods, parse, plus, reChainChildren, ref, ref1, toPromise, uncamelizeObj;
 
 plus = require('./plus');
 
@@ -12824,6 +12824,14 @@ ref1 = require('./plugin-middleware-response'), CAMEL_CASE = ref1.CAMEL_CASE, HY
 Request = require('./request');
 
 toPromise = require('./helper-promise').toPromise;
+
+MIDDLEWARE_REQUEST_PLUGINS = require('./plugin-middleware-request');
+
+MIDDLEWARE_RESPONSE_PLUGINS = require('./plugin-middleware-response');
+
+MIDDLEWARE_CACHE_HANDLER = require('./plugin-cache-handler');
+
+ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([MIDDLEWARE_RESPONSE_PLUGINS.READ_BINARY, MIDDLEWARE_RESPONSE_PLUGINS.PAGED_RESULTS, MIDDLEWARE_RESPONSE_PLUGINS.HYPERMEDIA, MIDDLEWARE_RESPONSE_PLUGINS.CAMEL_CASE, MIDDLEWARE_CACHE_HANDLER]);
 
 reChainChildren = function(request, url, obj) {
   var context, j, k, key, len, re, ref2;
@@ -12908,7 +12916,7 @@ Octokat = function(clientOptions) {
     if (data && !(typeof global !== "undefined" && global !== null ? (ref2 = global['Buffer']) != null ? ref2.isBuffer(data) : void 0 : void 0)) {
       data = uncamelizeObj(data);
     }
-    _request = Request(clientOptions);
+    _request = Request(clientOptions, ALL_PLUGINS);
     return _request(method, path, data, options, function(err, val) {
       var obj;
       if (err) {
@@ -12956,7 +12964,7 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./plugin-middleware-response":10,"./plus":12,"./request":13,"./verb-methods":14}],8:[function(require,module,exports){
+},{"./chainer":2,"./grammar":3,"./helper-promise":5,"./plugin-cache-handler":8,"./plugin-middleware-request":9,"./plugin-middleware-response":10,"./plus":12,"./request":13,"./verb-methods":14}],8:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -13507,21 +13515,13 @@ module.exports = plus;
 
 
 },{}],13:[function(require,module,exports){
-var ALL_PLUGINS, DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, Request, _, _cachedETags, ajax, base64encode, userAgent;
+var DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, Request, _, _cachedETags, ajax, base64encode, userAgent;
 
 _ = require('lodash');
 
 base64encode = require('./helper-base64');
 
 DEFAULT_HEADER = require('./grammar').DEFAULT_HEADER;
-
-MIDDLEWARE_REQUEST_PLUGINS = require('./plugin-middleware-request');
-
-MIDDLEWARE_RESPONSE_PLUGINS = require('./plugin-middleware-response');
-
-MIDDLEWARE_CACHE_HANDLER = require('./plugin-cache-handler');
-
-ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([MIDDLEWARE_RESPONSE_PLUGINS.READ_BINARY, MIDDLEWARE_RESPONSE_PLUGINS.PAGED_RESULTS, MIDDLEWARE_RESPONSE_PLUGINS.HYPERMEDIA, MIDDLEWARE_RESPONSE_PLUGINS.CAMEL_CASE, MIDDLEWARE_CACHE_HANDLER]);
 
 if (typeof window === "undefined" || window === null) {
   userAgent = 'octokat.js';
@@ -13578,7 +13578,7 @@ DEFAULT_CACHE_HANDLER = {
   }
 };
 
-Request = function(clientOptions) {
+Request = function(clientOptions, ALL_PLUGINS) {
   var emitter, requestFn;
   if (clientOptions == null) {
     clientOptions = {};
@@ -13753,7 +13753,7 @@ Request = function(clientOptions) {
 module.exports = Request;
 
 
-},{"./grammar":3,"./helper-base64":4,"./plugin-cache-handler":8,"./plugin-middleware-request":9,"./plugin-middleware-response":10,"lodash":1}],14:[function(require,module,exports){
+},{"./grammar":3,"./helper-base64":4,"lodash":1}],14:[function(require,module,exports){
 var SIMPLE_VERBS_PLUGIN, URL_TESTER, URL_VALIDATOR, injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
