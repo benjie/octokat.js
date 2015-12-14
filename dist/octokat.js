@@ -45,7 +45,7 @@ Chainer = function(plugins, request, path, name, contextTree, fn) {
 module.exports = Chainer;
 
 
-},{"./plus":13,"./verb-methods":15}],2:[function(require,module,exports){
+},{"./plus":16,"./verb-methods":18}],2:[function(require,module,exports){
 module.exports = function(message) {
   return typeof console !== "undefined" && console !== null ? typeof console.warn === "function" ? console.warn("Octokat Deprecation: " + message) : void 0 : void 0;
 };
@@ -544,7 +544,7 @@ module.exports = toQueryString;
 
 },{}],8:[function(require,module,exports){
 (function (global){
-var ALL_PLUGINS, Chainer, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, SIMPLE_VERBS_PLUGIN, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, toPromise, uncamelizeObj,
+var ALL_PLUGINS, CACHE_HANDLER, CAMEL_CASE, Chainer, HYPERMEDIA, MIDDLEWARE_REQUEST_PLUGINS, OBJECT_MATCHER, Octokat, PAGINATION, READ_BINARY, Request, SIMPLE_VERBS_PLUGIN, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, toPromise, uncamelizeObj,
   slice = [].slice;
 
 plus = require('./plus');
@@ -563,15 +563,21 @@ toPromise = require('./helper-promise').toPromise;
 
 applyHypermedia = require('./helper-hypermedia');
 
-SIMPLE_VERBS_PLUGIN = require('./plugin-simple-verbs');
+SIMPLE_VERBS_PLUGIN = require('./plugins/simple-verbs');
 
 MIDDLEWARE_REQUEST_PLUGINS = require('./plugin-middleware-request');
 
-MIDDLEWARE_RESPONSE_PLUGINS = require('./plugin-middleware-response');
+CACHE_HANDLER = require('./plugins/cache-handler');
 
-MIDDLEWARE_CACHE_HANDLER = require('./plugin-cache-handler');
+READ_BINARY = require('./plugins/read-binary');
 
-ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([SIMPLE_VERBS_PLUGIN, MIDDLEWARE_RESPONSE_PLUGINS.READ_BINARY, MIDDLEWARE_RESPONSE_PLUGINS.PAGED_RESULTS, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_RESPONSE_PLUGINS.HYPERMEDIA, MIDDLEWARE_RESPONSE_PLUGINS.CAMEL_CASE]);
+PAGINATION = require('./plugins/pagination');
+
+HYPERMEDIA = require('./plugins/hypermedia');
+
+CAMEL_CASE = require('./plugins/camel-case');
+
+ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([SIMPLE_VERBS_PLUGIN, READ_BINARY, PAGINATION, CACHE_HANDLER, HYPERMEDIA, CAMEL_CASE]);
 
 reChainChildren = function(plugins, request, url, obj) {
   var context, j, k, key, len, re, ref1;
@@ -755,71 +761,7 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plugin-cache-handler":9,"./plugin-middleware-request":10,"./plugin-middleware-response":11,"./plugin-simple-verbs":12,"./plus":13,"./request":14,"./verb-methods":15}],9:[function(require,module,exports){
-var CacheMiddleware;
-
-module.exports = new (CacheMiddleware = (function() {
-  function CacheMiddleware() {
-    this._cachedETags = {};
-  }
-
-  CacheMiddleware.prototype.get = function(method, path) {
-    return this._cachedETags[method + " " + path];
-  };
-
-  CacheMiddleware.prototype.add = function(method, path, eTag, data, status) {
-    return this._cachedETags[method + " " + path] = {
-      eTag: eTag,
-      data: data,
-      status: status
-    };
-  };
-
-  CacheMiddleware.prototype.requestMiddleware = function(arg) {
-    var cacheHandler, clientOptions, headers, method, path;
-    clientOptions = arg.clientOptions, method = arg.method, path = arg.path;
-    headers = {};
-    cacheHandler = clientOptions.cacheHandler || this;
-    if (cacheHandler.get(method, path)) {
-      headers['If-None-Match'] = cacheHandler.get(method, path).eTag;
-    } else {
-      headers['If-Modified-Since'] = 'Thu, 01 Jan 1970 00:00:00 GMT';
-    }
-    return {
-      headers: headers
-    };
-  };
-
-  CacheMiddleware.prototype.responseMiddleware = function(arg) {
-    var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref, request, status;
-    clientOptions = arg.clientOptions, request = arg.request, status = arg.status, jqXHR = arg.jqXHR, data = arg.data;
-    if (!jqXHR) {
-      return;
-    }
-    if (jqXHR) {
-      method = request.method, path = request.path;
-      cacheHandler = clientOptions.cacheHandler || this;
-      if (status === 304) {
-        ref = cacheHandler.get(method, path), data = ref.data, status = ref.status;
-      } else {
-        if (method === 'GET' && jqXHR.getResponseHeader('ETag')) {
-          eTag = jqXHR.getResponseHeader('ETag');
-          cacheHandler.add(method, path, eTag, data, jqXHR.status);
-        }
-      }
-      return {
-        data: data,
-        status: status
-      };
-    }
-  };
-
-  return CacheMiddleware;
-
-})());
-
-
-},{}],10:[function(require,module,exports){
+},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plugin-middleware-request":9,"./plugins/cache-handler":10,"./plugins/camel-case":11,"./plugins/hypermedia":12,"./plugins/pagination":13,"./plugins/read-binary":14,"./plugins/simple-verbs":15,"./plus":16,"./request":17,"./verb-methods":18}],9:[function(require,module,exports){
 var AUTHORIZATION, DEFAULT_HEADER, PATH_TEST, PREVIEW_APIS, URL_VALIDATOR, USE_POST_INSTEAD_OF_PATCH, base64encode, ref;
 
 ref = require('./grammar'), URL_VALIDATOR = ref.URL_VALIDATOR, DEFAULT_HEADER = ref.DEFAULT_HEADER;
@@ -886,23 +828,76 @@ AUTHORIZATION = {
 module.exports = [PATH_TEST, USE_POST_INSTEAD_OF_PATCH, PREVIEW_APIS, AUTHORIZATION];
 
 
-},{"./grammar":3,"./helper-base64":4}],11:[function(require,module,exports){
-var CAMEL_CASE, CamelCase, HYPERMEDIA, HyperMedia, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, READ_BINARY, ReadBinary, TREE_OPTIONS, applyHypermedia, deprecate, plus, ref, toPromise, toQueryString,
-  slice = [].slice;
+},{"./grammar":3,"./helper-base64":4}],10:[function(require,module,exports){
+var CacheMiddleware;
 
-plus = require('./plus');
+module.exports = new (CacheMiddleware = (function() {
+  function CacheMiddleware() {
+    this._cachedETags = {};
+  }
 
-deprecate = require('./deprecate');
+  CacheMiddleware.prototype.get = function(method, path) {
+    return this._cachedETags[method + " " + path];
+  };
 
-toPromise = require('./helper-promise').toPromise;
+  CacheMiddleware.prototype.add = function(method, path, eTag, data, status) {
+    return this._cachedETags[method + " " + path] = {
+      eTag: eTag,
+      data: data,
+      status: status
+    };
+  };
 
-toQueryString = require('./helper-querystring');
+  CacheMiddleware.prototype.requestMiddleware = function(arg) {
+    var cacheHandler, clientOptions, headers, method, path;
+    clientOptions = arg.clientOptions, method = arg.method, path = arg.path;
+    headers = {};
+    cacheHandler = clientOptions.cacheHandler || this;
+    if (cacheHandler.get(method, path)) {
+      headers['If-None-Match'] = cacheHandler.get(method, path).eTag;
+    } else {
+      headers['If-Modified-Since'] = 'Thu, 01 Jan 1970 00:00:00 GMT';
+    }
+    return {
+      headers: headers
+    };
+  };
 
-applyHypermedia = require('./helper-hypermedia');
+  CacheMiddleware.prototype.responseMiddleware = function(arg) {
+    var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref, request, status;
+    clientOptions = arg.clientOptions, request = arg.request, status = arg.status, jqXHR = arg.jqXHR, data = arg.data;
+    if (!jqXHR) {
+      return;
+    }
+    if (jqXHR) {
+      method = request.method, path = request.path;
+      cacheHandler = clientOptions.cacheHandler || this;
+      if (status === 304) {
+        ref = cacheHandler.get(method, path), data = ref.data, status = ref.status;
+      } else {
+        if (method === 'GET' && jqXHR.getResponseHeader('ETag')) {
+          eTag = jqXHR.getResponseHeader('ETag');
+          cacheHandler.add(method, path, eTag, data, jqXHR.status);
+        }
+      }
+      return {
+        data: data,
+        status: status
+      };
+    }
+  };
 
-ref = require('./grammar'), TREE_OPTIONS = ref.TREE_OPTIONS, OBJECT_MATCHER = ref.OBJECT_MATCHER;
+  return CacheMiddleware;
 
-CAMEL_CASE = new (CamelCase = (function() {
+})());
+
+
+},{}],11:[function(require,module,exports){
+var CamelCase, plus;
+
+plus = require('../plus');
+
+module.exports = new (CamelCase = (function() {
   function CamelCase() {}
 
   CamelCase.prototype.responseMiddleware = function(arg) {
@@ -927,11 +922,11 @@ CAMEL_CASE = new (CamelCase = (function() {
   };
 
   CamelCase.prototype._replaceObject = function(orig) {
-    var acc, j, key, len, ref1, value;
+    var acc, i, key, len, ref, value;
     acc = {};
-    ref1 = Object.keys(orig);
-    for (j = 0, len = ref1.length; j < len; j++) {
-      key = ref1[j];
+    ref = Object.keys(orig);
+    for (i = 0, len = ref.length; i < len; i++) {
+      key = ref[i];
       value = orig[key];
       this._replaceKeyValue(acc, key, value);
     }
@@ -939,19 +934,19 @@ CAMEL_CASE = new (CamelCase = (function() {
   };
 
   CamelCase.prototype._replaceArray = function(orig) {
-    var arr, item, j, key, len, ref1, value;
+    var arr, i, item, key, len, ref, value;
     arr = (function() {
-      var j, len, results;
+      var i, len, results;
       results = [];
-      for (j = 0, len = orig.length; j < len; j++) {
-        item = orig[j];
+      for (i = 0, len = orig.length; i < len; i++) {
+        item = orig[i];
         results.push(this.replace(item));
       }
       return results;
     }).call(this);
-    ref1 = Object.keys(orig);
-    for (j = 0, len = ref1.length; j < len; j++) {
-      key = ref1[j];
+    ref = Object.keys(orig);
+    for (i = 0, len = ref.length; i < len; i++) {
+      key = ref[i];
       value = orig[key];
       this._replaceKeyValue(arr, key, value);
     }
@@ -966,35 +961,14 @@ CAMEL_CASE = new (CamelCase = (function() {
 
 })());
 
-PAGED_RESULTS = new (PagedResults = (function() {
-  function PagedResults() {}
 
-  PagedResults.prototype.responseMiddleware = function(arg) {
-    var data, discard, href, j, jqXHR, len, links, part, ref1, ref2, rel;
-    jqXHR = arg.jqXHR, data = arg.data;
-    if (!jqXHR) {
-      return;
-    }
-    if (Array.isArray(data)) {
-      data = data.slice(0);
-      links = jqXHR.getResponseHeader('Link');
-      ref1 = (links != null ? links.split(',') : void 0) || [];
-      for (j = 0, len = ref1.length; j < len; j++) {
-        part = ref1[j];
-        ref2 = part.match(/<([^>]+)>;\ rel="([^"]+)"/), discard = ref2[0], href = ref2[1], rel = ref2[2];
-        data[rel + "_page_url"] = href;
-      }
-      return {
-        data: data
-      };
-    }
-  };
+},{"../plus":16}],12:[function(require,module,exports){
+var HyperMedia, deprecate,
+  slice = [].slice;
 
-  return PagedResults;
+deprecate = require('../deprecate');
 
-})());
-
-HYPERMEDIA = new (HyperMedia = (function() {
+module.exports = new (HyperMedia = (function() {
   function HyperMedia() {}
 
   HyperMedia.prototype.replace = function(instance, requestFn, data) {
@@ -1010,11 +984,11 @@ HYPERMEDIA = new (HyperMedia = (function() {
   };
 
   HyperMedia.prototype._replaceObject = function(instance, requestFn, orig) {
-    var acc, j, key, len, ref1, value;
+    var acc, i, key, len, ref, value;
     acc = {};
-    ref1 = Object.keys(orig);
-    for (j = 0, len = ref1.length; j < len; j++) {
-      key = ref1[j];
+    ref = Object.keys(orig);
+    for (i = 0, len = ref.length; i < len; i++) {
+      key = ref[i];
       value = orig[key];
       this._replaceKeyValue(instance, requestFn, acc, key, value);
     }
@@ -1022,19 +996,19 @@ HYPERMEDIA = new (HyperMedia = (function() {
   };
 
   HyperMedia.prototype._replaceArray = function(instance, requestFn, orig) {
-    var arr, item, j, key, len, ref1, value;
+    var arr, i, item, key, len, ref, value;
     arr = (function() {
-      var j, len, results;
+      var i, len, results;
       results = [];
-      for (j = 0, len = orig.length; j < len; j++) {
-        item = orig[j];
+      for (i = 0, len = orig.length; i < len; i++) {
+        item = orig[i];
         results.push(this.replace(instance, requestFn, item));
       }
       return results;
     }).call(this);
-    ref1 = Object.keys(orig);
-    for (j = 0, len = ref1.length; j < len; j++) {
-      key = ref1[j];
+    ref = Object.keys(orig);
+    for (i = 0, len = ref.length; i < len; i++) {
+      key = ref[i];
       value = orig[key];
       this._replaceKeyValue(instance, requestFn, arr, key, value);
     }
@@ -1088,7 +1062,45 @@ HYPERMEDIA = new (HyperMedia = (function() {
 
 })());
 
-READ_BINARY = new (ReadBinary = (function() {
+
+},{"../deprecate":2}],13:[function(require,module,exports){
+var Pagination;
+
+module.exports = new (Pagination = (function() {
+  function Pagination() {}
+
+  Pagination.prototype.responseMiddleware = function(arg) {
+    var data, discard, href, i, jqXHR, len, links, part, ref, ref1, rel;
+    jqXHR = arg.jqXHR, data = arg.data;
+    if (!jqXHR) {
+      return;
+    }
+    if (Array.isArray(data)) {
+      data = data.slice(0);
+      links = jqXHR.getResponseHeader('Link');
+      ref = (links != null ? links.split(',') : void 0) || [];
+      for (i = 0, len = ref.length; i < len; i++) {
+        part = ref[i];
+        ref1 = part.match(/<([^>]+)>;\ rel="([^"]+)"/), discard = ref1[0], href = ref1[1], rel = ref1[2];
+        data[rel + "_page_url"] = href;
+      }
+      return {
+        data: data
+      };
+    }
+  };
+
+  return Pagination;
+
+})());
+
+
+},{}],14:[function(require,module,exports){
+var ReadBinary, toQueryString;
+
+toQueryString = require('../helper-querystring');
+
+module.exports = new (ReadBinary = (function() {
   function ReadBinary() {}
 
   ReadBinary.prototype.verbs = {
@@ -1119,12 +1131,12 @@ READ_BINARY = new (ReadBinary = (function() {
   };
 
   ReadBinary.prototype.responseMiddleware = function(arg) {
-    var converted, data, i, isBase64, j, options, ref1;
+    var converted, data, i, isBase64, j, options, ref;
     options = arg.options, data = arg.data;
     isBase64 = options.isBase64;
     if (isBase64) {
       converted = '';
-      for (i = j = 0, ref1 = data.length; 0 <= ref1 ? j < ref1 : j > ref1; i = 0 <= ref1 ? ++j : --j) {
+      for (i = j = 0, ref = data.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
         converted += String.fromCharCode(data.charCodeAt(i) & 0xff);
       }
       return {
@@ -1137,19 +1149,12 @@ READ_BINARY = new (ReadBinary = (function() {
 
 })());
 
-module.exports = {
-  CAMEL_CASE: CAMEL_CASE,
-  PAGED_RESULTS: PAGED_RESULTS,
-  HYPERMEDIA: HYPERMEDIA,
-  READ_BINARY: READ_BINARY
-};
 
-
-},{"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./helper-querystring":7,"./plus":13}],12:[function(require,module,exports){
+},{"../helper-querystring":7}],15:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
-toQueryString = require('./helper-querystring');
+toQueryString = require('../helper-querystring');
 
 module.exports = {
   verbs: {
@@ -1229,7 +1234,7 @@ module.exports = {
 };
 
 
-},{"./helper-querystring":7}],13:[function(require,module,exports){
+},{"../helper-querystring":7}],16:[function(require,module,exports){
 var plus;
 
 plus = {
@@ -1283,7 +1288,7 @@ plus = {
 module.exports = plus;
 
 
-},{}],14:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, Request, _cachedETags, ajax, base64encode, plus, userAgent;
 
 plus = require('./plus');
@@ -1514,7 +1519,7 @@ Request = function(instance, clientOptions, ALL_PLUGINS) {
 module.exports = Request;
 
 
-},{"./grammar":3,"./helper-base64":4,"./plus":13}],15:[function(require,module,exports){
+},{"./grammar":3,"./helper-base64":4,"./plus":16}],18:[function(require,module,exports){
 var injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
