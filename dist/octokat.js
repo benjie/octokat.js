@@ -12899,8 +12899,10 @@ module.exports = toQueryString;
 
 },{}],9:[function(require,module,exports){
 (function (global){
-var ALL_PLUGINS, CAMEL_CASE, Chainer, HYPERMEDIA, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, parse, plus, reChainChildren, ref, ref1, toPromise, uncamelizeObj,
+var ALL_PLUGINS, CAMEL_CASE, Chainer, HYPERMEDIA, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, _, applyHypermedia, deprecate, injectVerbMethods, parse, plus, reChainChildren, ref, ref1, toPromise, uncamelizeObj,
   slice = [].slice;
+
+_ = require('lodash');
 
 plus = require('./plus');
 
@@ -12926,7 +12928,7 @@ MIDDLEWARE_RESPONSE_PLUGINS = require('./plugin-middleware-response');
 
 MIDDLEWARE_CACHE_HANDLER = require('./plugin-cache-handler');
 
-ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([MIDDLEWARE_RESPONSE_PLUGINS.READ_BINARY, MIDDLEWARE_RESPONSE_PLUGINS.PAGED_RESULTS, MIDDLEWARE_RESPONSE_PLUGINS.HYPERMEDIA, MIDDLEWARE_RESPONSE_PLUGINS.CAMEL_CASE, MIDDLEWARE_CACHE_HANDLER]);
+ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([MIDDLEWARE_RESPONSE_PLUGINS.READ_BINARY, MIDDLEWARE_RESPONSE_PLUGINS.PAGED_RESULTS, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_RESPONSE_PLUGINS.HYPERMEDIA, MIDDLEWARE_RESPONSE_PLUGINS.CAMEL_CASE]);
 
 reChainChildren = function(request, url, obj) {
   var context, j, k, key, len, re, ref2;
@@ -12945,24 +12947,31 @@ reChainChildren = function(request, url, obj) {
   return obj;
 };
 
-parse = function(obj, path, requestFn, instance) {
-  var url;
-  url = obj.url || path;
+parse = function(data, path, requestFn, instance, clientOptions) {
+  var acc, acc2, j, len, plugin, url;
+  url = data.url || path;
   if (url) {
-    obj = HYPERMEDIA.responseMiddleware({
-      instance: instance,
+    acc = {
+      clientOptions: clientOptions,
+      data: data,
+      options: {},
       requestFn: requestFn,
-      data: obj
-    }).data;
-    obj = CAMEL_CASE.responseMiddleware({
-      data: obj
-    }).data;
-    Chainer(requestFn, url, true, {}, obj);
-    reChainChildren(requestFn, url, obj);
+      instance: instance
+    };
+    for (j = 0, len = ALL_PLUGINS.length; j < len; j++) {
+      plugin = ALL_PLUGINS[j];
+      if (plugin.responseMiddleware) {
+        acc2 = plugin.responseMiddleware(acc);
+        _.extend(acc, acc2);
+      }
+    }
+    data = acc.data;
+    Chainer(requestFn, url, true, {}, data);
+    reChainChildren(requestFn, url, data);
   } else {
-    Chainer(requestFn, '', null, TREE_OPTIONS, obj);
+    Chainer(requestFn, '', null, TREE_OPTIONS, data);
   }
-  return obj;
+  return data;
 };
 
 uncamelizeObj = function(obj) {
@@ -13023,7 +13032,7 @@ Octokat = function(clientOptions) {
         return cb(null, val);
       }
       if (!disableHypermedia) {
-        obj = parse(val, path, request, instance);
+        obj = parse(val, path, request, instance, clientOptions);
         return cb(null, obj);
       } else {
         return cb(null, val);
@@ -13033,7 +13042,7 @@ Octokat = function(clientOptions) {
   Chainer(request, '', null, TREE_OPTIONS, instance);
   instance.me = instance.user;
   instance.parse = function(jsonObj) {
-    return parse(jsonObj, '', request, instance);
+    return parse(jsonObj, '', request, instance, clientOptions);
   };
   instance._fromUrlWithDefault = function() {
     var args, defaultFn, path;
@@ -13088,7 +13097,7 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":2,"./deprecate":3,"./grammar":4,"./helper-hypermedia":6,"./helper-promise":7,"./plugin-cache-handler":10,"./plugin-middleware-request":11,"./plugin-middleware-response":12,"./plus":14,"./request":15,"./verb-methods":16}],10:[function(require,module,exports){
+},{"./chainer":2,"./deprecate":3,"./grammar":4,"./helper-hypermedia":6,"./helper-promise":7,"./plugin-cache-handler":10,"./plugin-middleware-request":11,"./plugin-middleware-response":12,"./plus":14,"./request":15,"./verb-methods":16,"lodash":1}],10:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -13124,21 +13133,27 @@ module.exports = new (CacheMiddleware = (function() {
   };
 
   CacheMiddleware.prototype.responseMiddleware = function(arg) {
-    var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref, ref1, status;
-    clientOptions = arg.clientOptions, (ref = arg.request, method = ref.method, path = ref.path), status = arg.status, jqXHR = arg.jqXHR, data = arg.data;
-    cacheHandler = clientOptions.cacheHandler || this;
-    if (status === 304) {
-      ref1 = cacheHandler.get(method, path), data = ref1.data, status = ref1.status;
-    } else {
-      if (method === 'GET' && jqXHR.getResponseHeader('ETag')) {
-        eTag = jqXHR.getResponseHeader('ETag');
-        cacheHandler.add(method, path, eTag, data, jqXHR.status);
-      }
+    var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref, request, status;
+    clientOptions = arg.clientOptions, request = arg.request, status = arg.status, jqXHR = arg.jqXHR, data = arg.data;
+    if (!jqXHR) {
+      return;
     }
-    return {
-      data: data,
-      status: status
-    };
+    if (jqXHR) {
+      method = request.method, path = request.path;
+      cacheHandler = clientOptions.cacheHandler || this;
+      if (status === 304) {
+        ref = cacheHandler.get(method, path), data = ref.data, status = ref.status;
+      } else {
+        if (method === 'GET' && jqXHR.getResponseHeader('ETag')) {
+          eTag = jqXHR.getResponseHeader('ETag');
+          cacheHandler.add(method, path, eTag, data, jqXHR.status);
+        }
+      }
+      return {
+        data: data,
+        status: status
+      };
+    }
   };
 
   return CacheMiddleware;
@@ -13299,6 +13314,9 @@ PAGED_RESULTS = new (PagedResults = (function() {
   PagedResults.prototype.responseMiddleware = function(arg) {
     var data, discard, href, j, jqXHR, len, links, part, ref1, ref2, rel;
     jqXHR = arg.jqXHR, data = arg.data;
+    if (!jqXHR) {
+      return;
+    }
     if (Array.isArray(data)) {
       data = data.slice(0);
       links = jqXHR.getResponseHeader('Link');
@@ -13872,6 +13890,9 @@ URL_TESTER = function(path) {
 
 injectVerbMethods = function(request, path, obj) {
   var ref, results, verbFunc, verbName;
+  if (!request) {
+    throw new Error('Octokat BUG: request is required');
+  }
   ref = SIMPLE_VERBS_PLUGIN.verbs;
   results = [];
   for (verbName in ref) {
