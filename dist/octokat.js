@@ -883,11 +883,11 @@ AUTHORIZATION = {
   }
 };
 
-module.exports = [USE_POST_INSTEAD_OF_PATCH, PREVIEW_APIS, AUTHORIZATION];
+module.exports = [PATH_TEST, USE_POST_INSTEAD_OF_PATCH, PREVIEW_APIS, AUTHORIZATION];
 
 
 },{"./grammar":3,"./helper-base64":4}],11:[function(require,module,exports){
-var CAMEL_CASE, CamelCase, HYPERMEDIA, HyperMedia, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, READ_BINARY, ReadBinary, TREE_OPTIONS, applyHypermedia, deprecate, plus, ref, toPromise,
+var CAMEL_CASE, CamelCase, HYPERMEDIA, HyperMedia, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, READ_BINARY, ReadBinary, TREE_OPTIONS, applyHypermedia, deprecate, plus, ref, toPromise, toQueryString,
   slice = [].slice;
 
 plus = require('./plus');
@@ -895,6 +895,8 @@ plus = require('./plus');
 deprecate = require('./deprecate');
 
 toPromise = require('./helper-promise').toPromise;
+
+toQueryString = require('./helper-querystring');
 
 applyHypermedia = require('./helper-hypermedia');
 
@@ -1089,6 +1091,19 @@ HYPERMEDIA = new (HyperMedia = (function() {
 READ_BINARY = new (ReadBinary = (function() {
   function ReadBinary() {}
 
+  ReadBinary.prototype.verbs = {
+    readBinary: function(path, query) {
+      return {
+        method: 'GET',
+        path: "" + path + (toQueryString(query)),
+        options: {
+          isRaw: true,
+          isBase64: true
+        }
+      };
+    }
+  };
+
   ReadBinary.prototype.requestMiddleware = function(arg) {
     var isBase64, options;
     options = arg.options;
@@ -1130,7 +1145,7 @@ module.exports = {
 };
 
 
-},{"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plus":13}],12:[function(require,module,exports){
+},{"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./helper-querystring":7,"./plus":13}],12:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
@@ -1150,16 +1165,6 @@ module.exports = {
         path: "" + path + (toQueryString(query)),
         options: {
           isRaw: true
-        }
-      };
-    },
-    readBinary: function(path, query) {
-      return {
-        method: 'GET',
-        path: "" + path + (toQueryString(query)),
-        options: {
-          isRaw: true,
-          isBase64: true
         }
       };
     },
