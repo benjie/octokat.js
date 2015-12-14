@@ -12899,7 +12899,7 @@ module.exports = toQueryString;
 
 },{}],9:[function(require,module,exports){
 (function (global){
-var ALL_PLUGINS, CAMEL_CASE, Chainer, HYPERMEDIA, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, _, applyHypermedia, deprecate, injectVerbMethods, parse, plus, reChainChildren, ref, ref1, toPromise, uncamelizeObj,
+var ALL_PLUGINS, Chainer, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, _, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, toPromise, uncamelizeObj,
   slice = [].slice;
 
 _ = require('lodash');
@@ -12913,8 +12913,6 @@ ref = require('./grammar'), TREE_OPTIONS = ref.TREE_OPTIONS, OBJECT_MATCHER = re
 Chainer = require('./chainer');
 
 injectVerbMethods = require('./verb-methods');
-
-ref1 = require('./plugin-middleware-response'), CAMEL_CASE = ref1.CAMEL_CASE, HYPERMEDIA = ref1.HYPERMEDIA;
 
 Request = require('./request');
 
@@ -12931,14 +12929,14 @@ MIDDLEWARE_CACHE_HANDLER = require('./plugin-cache-handler');
 ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([MIDDLEWARE_RESPONSE_PLUGINS.READ_BINARY, MIDDLEWARE_RESPONSE_PLUGINS.PAGED_RESULTS, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_RESPONSE_PLUGINS.HYPERMEDIA, MIDDLEWARE_RESPONSE_PLUGINS.CAMEL_CASE]);
 
 reChainChildren = function(request, url, obj) {
-  var context, j, k, key, len, re, ref2;
+  var context, j, k, key, len, re, ref1;
   for (key in OBJECT_MATCHER) {
     re = OBJECT_MATCHER[key];
     if (re.test(obj.url)) {
       context = TREE_OPTIONS;
-      ref2 = key.split('.');
-      for (j = 0, len = ref2.length; j < len; j++) {
-        k = ref2[j];
+      ref1 = key.split('.');
+      for (j = 0, len = ref1.length; j < len; j++) {
+        k = ref1[j];
         context = context[k];
       }
       Chainer(request, url, k, context, obj);
@@ -12947,35 +12945,8 @@ reChainChildren = function(request, url, obj) {
   return obj;
 };
 
-parse = function(data, path, requestFn, instance, clientOptions) {
-  var acc, acc2, j, len, plugin, url;
-  url = data.url || path;
-  if (url) {
-    acc = {
-      clientOptions: clientOptions,
-      data: data,
-      options: {},
-      requestFn: requestFn,
-      instance: instance
-    };
-    for (j = 0, len = ALL_PLUGINS.length; j < len; j++) {
-      plugin = ALL_PLUGINS[j];
-      if (plugin.responseMiddleware) {
-        acc2 = plugin.responseMiddleware(acc);
-        _.extend(acc, acc2);
-      }
-    }
-    data = acc.data;
-    Chainer(requestFn, url, true, {}, data);
-    reChainChildren(requestFn, url, data);
-  } else {
-    Chainer(requestFn, '', null, TREE_OPTIONS, data);
-  }
-  return data;
-};
-
 uncamelizeObj = function(obj) {
-  var i, j, key, len, o, ref2, value;
+  var i, j, key, len, o, ref1, value;
   if (Array.isArray(obj)) {
     return (function() {
       var j, len, results;
@@ -12988,9 +12959,9 @@ uncamelizeObj = function(obj) {
     })();
   } else if (obj === Object(obj)) {
     o = {};
-    ref2 = Object.keys(obj);
-    for (j = 0, len = ref2.length; j < len; j++) {
-      key = ref2[j];
+    ref1 = Object.keys(obj);
+    for (j = 0, len = ref1.length; j < len; j++) {
+      key = ref1[j];
       value = obj[key];
       o[plus.uncamelize(key)] = uncamelizeObj(value);
     }
@@ -13001,17 +12972,18 @@ uncamelizeObj = function(obj) {
 };
 
 Octokat = function(clientOptions) {
-  var disableHypermedia, instance, request;
+  var disableHypermedia, instance, plugins, request;
   if (clientOptions == null) {
     clientOptions = {};
   }
+  plugins = clientOptions.plugins || ALL_PLUGINS;
   disableHypermedia = clientOptions.disableHypermedia;
   if (disableHypermedia == null) {
     disableHypermedia = false;
   }
   instance = {};
   request = function(method, path, data, options, cb) {
-    var _request, ref2;
+    var _request, ref1;
     if (options == null) {
       options = {
         raw: false,
@@ -13019,12 +12991,12 @@ Octokat = function(clientOptions) {
         isBoolean: false
       };
     }
-    if (data && !(typeof global !== "undefined" && global !== null ? (ref2 = global['Buffer']) != null ? ref2.isBuffer(data) : void 0 : void 0)) {
+    if (data && !(typeof global !== "undefined" && global !== null ? (ref1 = global['Buffer']) != null ? ref1.isBuffer(data) : void 0 : void 0)) {
       data = uncamelizeObj(data);
     }
-    _request = Request(instance, clientOptions, ALL_PLUGINS);
+    _request = Request(instance, clientOptions, plugins);
     return _request(method, path, data, options, function(err, val) {
-      var obj;
+      var context, obj;
       if (err) {
         return cb(err);
       }
@@ -13032,7 +13004,13 @@ Octokat = function(clientOptions) {
         return cb(null, val);
       }
       if (!disableHypermedia) {
-        obj = parse(val, path, request, instance, clientOptions);
+        context = {
+          data: val,
+          requestFn: _request,
+          instance: instance,
+          clientOptions: clientOptions
+        };
+        obj = instance._parseWithContext(path, context);
         return cb(null, obj);
       } else {
         return cb(null, val);
@@ -13041,8 +13019,37 @@ Octokat = function(clientOptions) {
   };
   Chainer(request, '', null, TREE_OPTIONS, instance);
   instance.me = instance.user;
-  instance.parse = function(jsonObj) {
-    return parse(jsonObj, '', request, instance, clientOptions);
+  instance.parse = function(data) {
+    var context;
+    context = {
+      requestFn: request,
+      data: data,
+      instance: instance,
+      clientOptions: clientOptions
+    };
+    return instance._parseWithContext('', context);
+  };
+  instance._parseWithContext = function(path, context) {
+    var data, j, len, plugin, requestFn, url;
+    data = context.data, requestFn = context.requestFn;
+    url = data.url || path;
+    if (context.options == null) {
+      context.options = {};
+    }
+    for (j = 0, len = plugins.length; j < len; j++) {
+      plugin = plugins[j];
+      if (plugin.responseMiddleware) {
+        _.extend(context, plugin.responseMiddleware(context));
+      }
+    }
+    data = context.data;
+    if (url) {
+      Chainer(requestFn, url, true, {}, data);
+      reChainChildren(requestFn, url, data);
+    } else {
+      Chainer(requestFn, '', null, TREE_OPTIONS, data);
+    }
+    return data;
   };
   instance._fromUrlWithDefault = function() {
     var args, defaultFn, path;
@@ -13796,7 +13803,7 @@ Request = function(instance, clientOptions, ALL_PLUGINS) {
       emitter.emit('start', method, path, data, options);
     }
     return ajax(ajaxConfig, function(err, val) {
-      var acc2, emitterRate, j, jqXHR, json, len1, rateLimit, rateLimitRemaining, rateLimitReset;
+      var emitterRate, jqXHR, json, rateLimit, rateLimitRemaining, rateLimitReset;
       jqXHR = err || val;
       if (emitter) {
         rateLimit = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Limit'));
@@ -13833,14 +13840,7 @@ Request = function(instance, clientOptions, ALL_PLUGINS) {
             requestFn: requestFn,
             instance: instance
           };
-          for (j = 0, len1 = ALL_PLUGINS.length; j < len1; j++) {
-            plugin = ALL_PLUGINS[j];
-            if (plugin.responseMiddleware) {
-              acc2 = plugin.responseMiddleware(acc);
-              _.extend(acc, acc2);
-            }
-          }
-          data = acc.data;
+          data = instance._parseWithContext('', acc);
           return cb(null, data, jqXHR.status, jqXHR);
         }
       } else {
