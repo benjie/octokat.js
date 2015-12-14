@@ -442,6 +442,18 @@ octo.fromUrl("https://api.github.com/repos/philschatz/octokat.js/issues/1").fetc
 octo.fromUrl("/repos/philschatz/octokat.js/issues").fetch({state: 'open'}, cb);
 ```
 
+If the URL is a Hypermedia Template then you can fill in the fields by passing them in as an additional argument.
+
+```js
+params = {
+  owner: 'philschatz'
+  repo: 'octokat.js'
+  name: 'dist.js'
+}
+octo.fromUrl("https://uploads.github.com/repos/{owner}/{repo}/releases{/id}/assets{?name}", params)
+// returns https://uploads.github.com/repos/philschatz/octokat.js/releases/assets?name=dist.js
+```
+
 ## Development
 
 - Run `npm install`
