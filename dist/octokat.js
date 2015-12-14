@@ -12666,7 +12666,7 @@ toQueryString = require('./helper-querystring');
 deprecate = require('./deprecate');
 
 module.exports = function() {
-  var args, fieldName, i, j, len, m, match, optionalNames, optionalParams, param, templateParams, url;
+  var args, fieldName, fieldValue, i, j, k, len, len1, m, match, optionalNames, optionalParams, param, templateParams, url;
   url = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
   if (args.length === 0) {
     templateParams = {};
@@ -12683,8 +12683,19 @@ module.exports = function() {
     switch (match[1]) {
       case '/':
         fieldName = match.slice(2, match.length - 1);
-        if (templateParams[fieldName]) {
-          param = "/" + templateParams[fieldName];
+        fieldValue = templateParams[fieldName];
+        if (fieldValue) {
+          if (/\//.test(fieldValue)) {
+            throw new Error("Octokat Error: this field must not contain slashes: " + fieldName);
+          }
+          param = "/" + fieldValue;
+        }
+        break;
+      case '+':
+        fieldName = match.slice(2, match.length - 1);
+        fieldValue = templateParams[fieldName];
+        if (fieldValue) {
+          param = fieldValue;
         }
         break;
       case '?':
@@ -12696,12 +12707,21 @@ module.exports = function() {
         }
         param = toQueryString(optionalParams);
         break;
+      case '&':
+        optionalNames = match.slice(2, -1).split(',');
+        optionalParams = {};
+        for (k = 0, len1 = optionalNames.length; k < len1; k++) {
+          fieldName = optionalNames[k];
+          optionalParams[fieldName] = templateParams[fieldName];
+        }
+        param = toQueryString(optionalParams, true);
+        break;
       default:
         fieldName = match.slice(1, match.length - 1);
         if (templateParams[fieldName]) {
           param = templateParams[fieldName];
         } else {
-          throw new Error("Octokat Error: param " + fieldName + " is required");
+          throw new Error("Octokat Error: Required parameter is missing: " + fieldName);
         }
     }
     url = url.replace(match, param);
@@ -12850,7 +12870,7 @@ module.exports = {
 },{}],8:[function(require,module,exports){
 var toQueryString;
 
-toQueryString = function(options) {
+toQueryString = function(options, omitQuestionMark) {
   var key, params, ref, value;
   if (!options || options === {}) {
     return '';
@@ -12864,7 +12884,11 @@ toQueryString = function(options) {
     }
   }
   if (params.length) {
-    return "?" + (params.join('&'));
+    if (omitQuestionMark) {
+      return "&" + (params.join('&'));
+    } else {
+      return "?" + (params.join('&'));
+    }
   } else {
     return '';
   }
