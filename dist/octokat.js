@@ -45,7 +45,7 @@ Chainer = function(plugins, request, path, name, contextTree, fn) {
 module.exports = Chainer;
 
 
-},{"./plus":16,"./verb-methods":18}],2:[function(require,module,exports){
+},{"./plus":19,"./verb-methods":21}],2:[function(require,module,exports){
 module.exports = function(message) {
   return typeof console !== "undefined" && console !== null ? typeof console.warn === "function" ? console.warn("Octokat Deprecation: " + message) : void 0 : void 0;
 };
@@ -544,7 +544,7 @@ module.exports = toQueryString;
 
 },{}],8:[function(require,module,exports){
 (function (global){
-var ALL_PLUGINS, CACHE_HANDLER, CAMEL_CASE, Chainer, HYPERMEDIA, MIDDLEWARE_REQUEST_PLUGINS, OBJECT_MATCHER, Octokat, PAGINATION, READ_BINARY, Request, SIMPLE_VERBS_PLUGIN, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, toPromise, uncamelizeObj,
+var ALL_PLUGINS, Chainer, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, toPromise, uncamelizeObj,
   slice = [].slice;
 
 plus = require('./plus');
@@ -563,21 +563,7 @@ toPromise = require('./helper-promise').toPromise;
 
 applyHypermedia = require('./helper-hypermedia');
 
-SIMPLE_VERBS_PLUGIN = require('./plugins/simple-verbs');
-
-MIDDLEWARE_REQUEST_PLUGINS = require('./plugin-middleware-request');
-
-CACHE_HANDLER = require('./plugins/cache-handler');
-
-READ_BINARY = require('./plugins/read-binary');
-
-PAGINATION = require('./plugins/pagination');
-
-HYPERMEDIA = require('./plugins/hypermedia');
-
-CAMEL_CASE = require('./plugins/camel-case');
-
-ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([SIMPLE_VERBS_PLUGIN, READ_BINARY, PAGINATION, CACHE_HANDLER, HYPERMEDIA, CAMEL_CASE]);
+ALL_PLUGINS = [require('./plugins/path-check'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), require('./plugins/hypermedia'), require('./plugins/camel-case')];
 
 reChainChildren = function(plugins, request, url, obj) {
   var context, j, k, key, len, re, ref1;
@@ -761,55 +747,15 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plugin-middleware-request":9,"./plugins/cache-handler":10,"./plugins/camel-case":11,"./plugins/hypermedia":12,"./plugins/pagination":13,"./plugins/read-binary":14,"./plugins/simple-verbs":15,"./plus":16,"./request":17,"./verb-methods":18}],9:[function(require,module,exports){
-var AUTHORIZATION, DEFAULT_HEADER, PATH_TEST, PREVIEW_APIS, URL_VALIDATOR, USE_POST_INSTEAD_OF_PATCH, base64encode, ref;
+},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plugins/authorization":9,"./plugins/cache-handler":10,"./plugins/camel-case":11,"./plugins/hypermedia":12,"./plugins/pagination":13,"./plugins/path-check":14,"./plugins/preview-apis":15,"./plugins/read-binary":16,"./plugins/simple-verbs":17,"./plugins/use-post-instead-of-patch":18,"./plus":19,"./request":20,"./verb-methods":21}],9:[function(require,module,exports){
+var base64encode;
 
-ref = require('./grammar'), URL_VALIDATOR = ref.URL_VALIDATOR, DEFAULT_HEADER = ref.DEFAULT_HEADER;
+base64encode = require('../helper-base64');
 
-base64encode = require('./helper-base64');
-
-PATH_TEST = {
+module.exports = {
   requestMiddleware: function(arg) {
-    var err, path;
-    path = arg.path;
-    if (!URL_VALIDATOR.test(path)) {
-      err = "Octokat BUG: Invalid Path. If this is actually a valid path then please update the URL_VALIDATOR. path=" + path;
-      return console.warn(err);
-    }
-  }
-};
-
-USE_POST_INSTEAD_OF_PATCH = {
-  requestMiddleware: function(arg) {
-    var method, ref1, usePostInsteadOfPatch;
-    (ref1 = arg.clientOptions, usePostInsteadOfPatch = ref1.usePostInsteadOfPatch), method = arg.method;
-    if (usePostInsteadOfPatch && method === 'PATCH') {
-      return {
-        method: 'POST'
-      };
-    }
-  }
-};
-
-PREVIEW_APIS = {
-  requestMiddleware: function(arg) {
-    var acceptHeader, path;
-    path = arg.path;
-    acceptHeader = DEFAULT_HEADER(path);
-    if (acceptHeader) {
-      return {
-        headers: {
-          'Accept': acceptHeader
-        }
-      };
-    }
-  }
-};
-
-AUTHORIZATION = {
-  requestMiddleware: function(arg) {
-    var auth, password, ref1, token, username;
-    ref1 = arg.clientOptions, token = ref1.token, username = ref1.username, password = ref1.password;
+    var auth, password, ref, token, username;
+    ref = arg.clientOptions, token = ref.token, username = ref.username, password = ref.password;
     if (token || (username && password)) {
       if (token) {
         auth = "token " + token;
@@ -825,10 +771,8 @@ AUTHORIZATION = {
   }
 };
 
-module.exports = [PATH_TEST, USE_POST_INSTEAD_OF_PATCH, PREVIEW_APIS, AUTHORIZATION];
 
-
-},{"./grammar":3,"./helper-base64":4}],10:[function(require,module,exports){
+},{"../helper-base64":4}],10:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -962,7 +906,7 @@ module.exports = new (CamelCase = (function() {
 })());
 
 
-},{"../plus":16}],12:[function(require,module,exports){
+},{"../plus":19}],12:[function(require,module,exports){
 var HyperMedia, deprecate,
   slice = [].slice;
 
@@ -1096,6 +1040,44 @@ module.exports = new (Pagination = (function() {
 
 
 },{}],14:[function(require,module,exports){
+var URL_VALIDATOR;
+
+URL_VALIDATOR = require('../grammar').URL_VALIDATOR;
+
+module.exports = {
+  requestMiddleware: function(arg) {
+    var err, path;
+    path = arg.path;
+    if (!URL_VALIDATOR.test(path)) {
+      err = "Octokat BUG: Invalid Path. If this is actually a valid path then please update the URL_VALIDATOR. path=" + path;
+      return console.warn(err);
+    }
+  }
+};
+
+
+},{"../grammar":3}],15:[function(require,module,exports){
+var DEFAULT_HEADER;
+
+DEFAULT_HEADER = require('../grammar').DEFAULT_HEADER;
+
+module.exports = {
+  requestMiddleware: function(arg) {
+    var acceptHeader, path;
+    path = arg.path;
+    acceptHeader = DEFAULT_HEADER(path);
+    if (acceptHeader) {
+      return {
+        headers: {
+          'Accept': acceptHeader
+        }
+      };
+    }
+  }
+};
+
+
+},{"../grammar":3}],16:[function(require,module,exports){
 var ReadBinary, toQueryString;
 
 toQueryString = require('../helper-querystring');
@@ -1150,7 +1132,7 @@ module.exports = new (ReadBinary = (function() {
 })());
 
 
-},{"../helper-querystring":7}],15:[function(require,module,exports){
+},{"../helper-querystring":7}],17:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
@@ -1234,7 +1216,21 @@ module.exports = {
 };
 
 
-},{"../helper-querystring":7}],16:[function(require,module,exports){
+},{"../helper-querystring":7}],18:[function(require,module,exports){
+module.exports = {
+  requestMiddleware: function(arg) {
+    var method, ref, usePostInsteadOfPatch;
+    (ref = arg.clientOptions, usePostInsteadOfPatch = ref.usePostInsteadOfPatch), method = arg.method;
+    if (usePostInsteadOfPatch && method === 'PATCH') {
+      return {
+        method: 'POST'
+      };
+    }
+  }
+};
+
+
+},{}],19:[function(require,module,exports){
 var plus;
 
 plus = {
@@ -1288,14 +1284,10 @@ plus = {
 module.exports = plus;
 
 
-},{}],17:[function(require,module,exports){
-var DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, Request, _cachedETags, ajax, base64encode, plus, userAgent;
+},{}],20:[function(require,module,exports){
+var DEFAULT_CACHE_HANDLER, Request, _cachedETags, ajax, plus, userAgent;
 
 plus = require('./plus');
-
-base64encode = require('./helper-base64');
-
-DEFAULT_HEADER = require('./grammar').DEFAULT_HEADER;
 
 if (typeof window === "undefined" || window === null) {
   userAgent = 'octokat.js';
@@ -1519,7 +1511,7 @@ Request = function(instance, clientOptions, ALL_PLUGINS) {
 module.exports = Request;
 
 
-},{"./grammar":3,"./helper-base64":4,"./plus":16}],18:[function(require,module,exports){
+},{"./plus":19}],21:[function(require,module,exports){
 var injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 

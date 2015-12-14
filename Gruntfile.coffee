@@ -119,6 +119,12 @@ module.exports = (grunt) ->
           'dist/node/helper-promise.js' : 'src/helper-promise.coffee'
           'dist/node/helper-querystring.js' : 'src/helper-querystring.coffee'
           'dist/node/helper-hypermedia.js' : 'src/helper-hypermedia.coffee'
+
+          'dist/node/plugins/path-check.js'  : 'src/plugins/path-check.coffee'
+          'dist/node/plugins/preview-apis.js'  : 'src/plugins/preview-apis.coffee'
+          'dist/node/plugins/use-post-instead-of-patch.js'  : 'src/plugins/use-post-instead-of-patch.coffee'
+          'dist/node/plugins/authorization.js'  : 'src/plugins/authorization.coffee'
+
           'dist/node/plugins/simple-verbs.js'  : 'src/plugins/simple-verbs.coffee'
           'dist/node/plugins/pagination.js'  : 'src/plugins/pagination.coffee'
           'dist/node/plugins/read-binary.js'  : 'src/plugins/read-binary.coffee'
