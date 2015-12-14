@@ -306,9 +306,9 @@ module.exports = base64encode;
 var deprecate, toQueryString,
   slice = [].slice;
 
-toQueryString = require('./helper-querystring');
+toQueryString = require('./querystring');
 
-deprecate = require('./deprecate');
+deprecate = require('../deprecate');
 
 module.exports = function() {
   var args, fieldName, fieldValue, i, j, k, len, len1, m, match, optionalNames, optionalParams, param, templateParams, url;
@@ -376,7 +376,7 @@ module.exports = function() {
 };
 
 
-},{"./deprecate":2,"./helper-querystring":7}],6:[function(require,module,exports){
+},{"../deprecate":2,"./querystring":7}],6:[function(require,module,exports){
 var Promise, allPromises, injector, newPromise, ref, req, toPromise,
   slice = [].slice;
 
@@ -559,9 +559,9 @@ injectVerbMethods = require('./verb-methods');
 
 Request = require('./request');
 
-toPromise = require('./helper-promise').toPromise;
+toPromise = require('./helpers/promise').toPromise;
 
-applyHypermedia = require('./helper-hypermedia');
+applyHypermedia = require('./helpers/hypermedia');
 
 ALL_PLUGINS = [require('./plugins/path-check'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), require('./plugins/hypermedia'), require('./plugins/camel-case')];
 
@@ -747,10 +747,10 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plugins/authorization":9,"./plugins/cache-handler":10,"./plugins/camel-case":11,"./plugins/hypermedia":12,"./plugins/pagination":13,"./plugins/path-check":14,"./plugins/preview-apis":15,"./plugins/read-binary":16,"./plugins/simple-verbs":17,"./plugins/use-post-instead-of-patch":18,"./plus":19,"./request":20,"./verb-methods":21}],9:[function(require,module,exports){
+},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helpers/hypermedia":5,"./helpers/promise":6,"./plugins/authorization":9,"./plugins/cache-handler":10,"./plugins/camel-case":11,"./plugins/hypermedia":12,"./plugins/pagination":13,"./plugins/path-check":14,"./plugins/preview-apis":15,"./plugins/read-binary":16,"./plugins/simple-verbs":17,"./plugins/use-post-instead-of-patch":18,"./plus":19,"./request":20,"./verb-methods":21}],9:[function(require,module,exports){
 var base64encode;
 
-base64encode = require('../helper-base64');
+base64encode = require('../helpers/base64');
 
 module.exports = {
   requestMiddleware: function(arg) {
@@ -772,7 +772,7 @@ module.exports = {
 };
 
 
-},{"../helper-base64":4}],10:[function(require,module,exports){
+},{"../helpers/base64":4}],10:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -1080,7 +1080,7 @@ module.exports = {
 },{"../grammar":3}],16:[function(require,module,exports){
 var ReadBinary, toQueryString;
 
-toQueryString = require('../helper-querystring');
+toQueryString = require('../helpers/querystring');
 
 module.exports = new (ReadBinary = (function() {
   function ReadBinary() {}
@@ -1132,11 +1132,11 @@ module.exports = new (ReadBinary = (function() {
 })());
 
 
-},{"../helper-querystring":7}],17:[function(require,module,exports){
+},{"../helpers/querystring":7}],17:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
-toQueryString = require('../helper-querystring');
+toQueryString = require('../helpers/querystring');
 
 module.exports = {
   verbs: {
@@ -1216,7 +1216,7 @@ module.exports = {
 };
 
 
-},{"../helper-querystring":7}],18:[function(require,module,exports){
+},{"../helpers/querystring":7}],18:[function(require,module,exports){
 module.exports = {
   requestMiddleware: function(arg) {
     var method, ref, usePostInsteadOfPatch;
@@ -1515,9 +1515,9 @@ module.exports = Request;
 var injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
-toPromise = require('./helper-promise').toPromise;
+toPromise = require('./helpers/promise').toPromise;
 
-toQueryString = require('./helper-querystring');
+toQueryString = require('./helpers/querystring');
 
 injectVerbMethods = function(plugins, request, path, obj) {
   var i, len, plugin, results, verbFunc, verbName;
@@ -1557,5 +1557,5 @@ injectVerbMethods = function(plugins, request, path, obj) {
 module.exports = injectVerbMethods;
 
 
-},{"./helper-promise":6,"./helper-querystring":7}]},{},[8])(8)
+},{"./helpers/promise":6,"./helpers/querystring":7}]},{},[8])(8)
 });

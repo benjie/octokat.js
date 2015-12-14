@@ -115,10 +115,10 @@ module.exports = (grunt) ->
           'dist/node/deprecate.js'      : 'src/deprecate.coffee'
           'dist/node/chainer.js'        : 'src/chainer.coffee'
           'dist/node/grammar.js'        : 'src/grammar.coffee'
-          'dist/node/helper-base64.js'  : 'src/helper-base64.coffee'
-          'dist/node/helper-promise.js' : 'src/helper-promise.coffee'
-          'dist/node/helper-querystring.js' : 'src/helper-querystring.coffee'
-          'dist/node/helper-hypermedia.js' : 'src/helper-hypermedia.coffee'
+          'dist/node/helpers/base64.js'  : 'src/helpers/base64.coffee'
+          'dist/node/helpers/promise.js' : 'src/helpers/promise.coffee'
+          'dist/node/helpers/querystring.js' : 'src/helpers/querystring.coffee'
+          'dist/node/helpers/hypermedia.js' : 'src/helpers/hypermedia.coffee'
 
           'dist/node/plugins/path-check.js'  : 'src/plugins/path-check.coffee'
           'dist/node/plugins/preview-apis.js'  : 'src/plugins/preview-apis.coffee'
@@ -134,7 +134,6 @@ module.exports = (grunt) ->
           'dist/node/plugins/cache-handler.js' : 'src/plugins/cache-handler.coffee'
           'dist/node/octokat.js'        : 'src/octokat.coffee'
           'dist/node/plus.js'           : 'src/plus.coffee'
-          # 'dist/node/replacer.js'       : 'src/replacer.coffee'
           'dist/node/request.js'        : 'src/request.coffee'
           'dist/node/verb-methods.js'   : 'src/verb-methods.coffee'
 
