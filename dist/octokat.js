@@ -6,7 +6,7 @@ plus = require('./plus');
 
 injectVerbMethods = require('./verb-methods');
 
-Chainer = function(request, path, name, contextTree, fn) {
+Chainer = function(plugins, request, path, name, contextTree, fn) {
   var fn1;
   if (fn == null) {
     fn = function() {
@@ -20,10 +20,10 @@ Chainer = function(request, path, name, contextTree, fn) {
       } else {
         separator = '/';
       }
-      return Chainer(request, path + "/" + (args.join(separator)), name, contextTree);
+      return Chainer(plugins, request, path + "/" + (args.join(separator)), name, contextTree);
     };
   }
-  injectVerbMethods(request, path, fn);
+  injectVerbMethods(plugins, request, path, fn);
   if (typeof fn === 'function' || typeof fn === 'object') {
     fn1 = function(name) {
       delete fn[plus.camelize(name)];
@@ -31,7 +31,7 @@ Chainer = function(request, path, name, contextTree, fn) {
         configurable: true,
         enumerable: true,
         get: function() {
-          return Chainer(request, path + "/" + name, name, contextTree[name]);
+          return Chainer(plugins, request, path + "/" + name, name, contextTree[name]);
         }
       });
     };
@@ -544,7 +544,7 @@ module.exports = toQueryString;
 
 },{}],8:[function(require,module,exports){
 (function (global){
-var ALL_PLUGINS, Chainer, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, toPromise, uncamelizeObj,
+var ALL_PLUGINS, Chainer, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, SIMPLE_VERBS_PLUGIN, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, toPromise, uncamelizeObj,
   slice = [].slice;
 
 plus = require('./plus');
@@ -563,15 +563,17 @@ toPromise = require('./helper-promise').toPromise;
 
 applyHypermedia = require('./helper-hypermedia');
 
+SIMPLE_VERBS_PLUGIN = require('./plugin-simple-verbs');
+
 MIDDLEWARE_REQUEST_PLUGINS = require('./plugin-middleware-request');
 
 MIDDLEWARE_RESPONSE_PLUGINS = require('./plugin-middleware-response');
 
 MIDDLEWARE_CACHE_HANDLER = require('./plugin-cache-handler');
 
-ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([MIDDLEWARE_RESPONSE_PLUGINS.READ_BINARY, MIDDLEWARE_RESPONSE_PLUGINS.PAGED_RESULTS, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_RESPONSE_PLUGINS.HYPERMEDIA, MIDDLEWARE_RESPONSE_PLUGINS.CAMEL_CASE]);
+ALL_PLUGINS = MIDDLEWARE_REQUEST_PLUGINS.concat([SIMPLE_VERBS_PLUGIN, MIDDLEWARE_RESPONSE_PLUGINS.READ_BINARY, MIDDLEWARE_RESPONSE_PLUGINS.PAGED_RESULTS, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_RESPONSE_PLUGINS.HYPERMEDIA, MIDDLEWARE_RESPONSE_PLUGINS.CAMEL_CASE]);
 
-reChainChildren = function(request, url, obj) {
+reChainChildren = function(plugins, request, url, obj) {
   var context, j, k, key, len, re, ref1;
   for (key in OBJECT_MATCHER) {
     re = OBJECT_MATCHER[key];
@@ -582,7 +584,7 @@ reChainChildren = function(request, url, obj) {
         k = ref1[j];
         context = context[k];
       }
-      Chainer(request, url, k, context, obj);
+      Chainer(plugins, request, url, k, context, obj);
     }
   }
   return obj;
@@ -660,7 +662,7 @@ Octokat = function(clientOptions) {
       }
     });
   };
-  Chainer(request, '', null, TREE_OPTIONS, instance);
+  Chainer(plugins, request, '', null, TREE_OPTIONS, instance);
   instance.me = instance.user;
   instance.parse = function(data) {
     var context;
@@ -673,7 +675,7 @@ Octokat = function(clientOptions) {
     return instance._parseWithContext('', context);
   };
   instance._parseWithContext = function(path, context) {
-    var data, j, len, plugin, requestFn, url;
+    var data, datum, j, l, len, len1, plugin, requestFn, url;
     data = context.data, requestFn = context.requestFn;
     url = data.url || path;
     if (context.options == null) {
@@ -687,10 +689,16 @@ Octokat = function(clientOptions) {
     }
     data = context.data;
     if (url) {
-      Chainer(requestFn, url, true, {}, data);
-      reChainChildren(requestFn, url, data);
+      Chainer(plugins, requestFn, url, true, {}, data);
+      reChainChildren(plugins, requestFn, url, data);
     } else {
-      Chainer(requestFn, '', null, TREE_OPTIONS, data);
+      Chainer(plugins, requestFn, '', null, TREE_OPTIONS, data);
+      if (Array.isArray(data)) {
+        for (l = 0, len1 = data.length; l < len1; l++) {
+          datum = data[l];
+          reChainChildren(plugins, requestFn, datum.url, datum);
+        }
+      }
     }
     return data;
   };
@@ -698,7 +706,7 @@ Octokat = function(clientOptions) {
     var args, defaultFn, path;
     path = arguments[0], defaultFn = arguments[1], args = 3 <= arguments.length ? slice.call(arguments, 2) : [];
     path = applyHypermedia.apply(null, [path].concat(slice.call(args)));
-    injectVerbMethods(request, path, defaultFn);
+    injectVerbMethods(plugins, request, path, defaultFn);
     return defaultFn;
   };
   instance.fromUrl = function() {
@@ -724,7 +732,7 @@ Octokat = function(clientOptions) {
       }
     };
     if (!/\{/.test(path)) {
-      injectVerbMethods(request, path, fn);
+      injectVerbMethods(plugins, request, path, fn);
     }
     return fn;
   };
@@ -747,7 +755,7 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plugin-cache-handler":9,"./plugin-middleware-request":10,"./plugin-middleware-response":11,"./plus":13,"./request":14,"./verb-methods":15}],9:[function(require,module,exports){
+},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plugin-cache-handler":9,"./plugin-middleware-request":10,"./plugin-middleware-response":11,"./plugin-simple-verbs":12,"./plus":13,"./request":14,"./verb-methods":15}],9:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -879,7 +887,7 @@ module.exports = [USE_POST_INSTEAD_OF_PATCH, PREVIEW_APIS, AUTHORIZATION];
 
 
 },{"./grammar":3,"./helper-base64":4}],11:[function(require,module,exports){
-var CAMEL_CASE, CamelCase, Chainer, HYPERMEDIA, HyperMedia, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, READ_BINARY, ReadBinary, TREE_OPTIONS, applyHypermedia, deprecate, plus, ref, toPromise,
+var CAMEL_CASE, CamelCase, HYPERMEDIA, HyperMedia, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, READ_BINARY, ReadBinary, TREE_OPTIONS, applyHypermedia, deprecate, plus, ref, toPromise,
   slice = [].slice;
 
 plus = require('./plus');
@@ -891,8 +899,6 @@ toPromise = require('./helper-promise').toPromise;
 applyHypermedia = require('./helper-hypermedia');
 
 ref = require('./grammar'), TREE_OPTIONS = ref.TREE_OPTIONS, OBJECT_MATCHER = ref.OBJECT_MATCHER;
-
-Chainer = require('./chainer');
 
 CAMEL_CASE = new (CamelCase = (function() {
   function CamelCase() {}
@@ -1002,31 +1008,13 @@ HYPERMEDIA = new (HyperMedia = (function() {
   };
 
   HyperMedia.prototype._replaceObject = function(instance, requestFn, orig) {
-    var acc, context, j, k, key, l, len, len1, len2, m, re, ref1, ref2, ref3, url, value;
+    var acc, j, key, len, ref1, value;
     acc = {};
     ref1 = Object.keys(orig);
     for (j = 0, len = ref1.length; j < len; j++) {
       key = ref1[j];
       value = orig[key];
       this._replaceKeyValue(instance, requestFn, acc, key, value);
-    }
-    url = acc.url;
-    if (url) {
-      Chainer(requestFn, url, true, null, acc);
-    }
-    ref2 = Object.keys(OBJECT_MATCHER);
-    for (l = 0, len1 = ref2.length; l < len1; l++) {
-      key = ref2[l];
-      re = OBJECT_MATCHER[key];
-      if (re.test(url)) {
-        context = TREE_OPTIONS;
-        ref3 = key.split('.');
-        for (m = 0, len2 = ref3.length; m < len2; m++) {
-          k = ref3[m];
-          context = context[k];
-        }
-        Chainer(requestFn, url, k, context, acc);
-      }
     }
     return acc;
   };
@@ -1142,7 +1130,7 @@ module.exports = {
 };
 
 
-},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plus":13}],12:[function(require,module,exports){
+},{"./deprecate":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plus":13}],12:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
@@ -1522,7 +1510,7 @@ module.exports = Request;
 
 
 },{"./grammar":3,"./helper-base64":4,"./plus":13}],15:[function(require,module,exports){
-var SIMPLE_VERBS_PLUGIN, URL_TESTER, URL_VALIDATOR, injectVerbMethods, toPromise, toQueryString,
+var URL_TESTER, URL_VALIDATOR, injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
 URL_VALIDATOR = require('./grammar').URL_VALIDATOR;
@@ -1530,8 +1518,6 @@ URL_VALIDATOR = require('./grammar').URL_VALIDATOR;
 toPromise = require('./helper-promise').toPromise;
 
 toQueryString = require('./helper-querystring');
-
-SIMPLE_VERBS_PLUGIN = require('./plugin-simple-verbs');
 
 URL_TESTER = function(path) {
   var err;
@@ -1541,30 +1527,38 @@ URL_TESTER = function(path) {
   }
 };
 
-injectVerbMethods = function(request, path, obj) {
-  var ref, results, verbFunc, verbName;
+injectVerbMethods = function(plugins, request, path, obj) {
+  var i, len, plugin, results, verbFunc, verbName;
   if (!request) {
     throw new Error('Octokat BUG: request is required');
   }
-  ref = SIMPLE_VERBS_PLUGIN.verbs;
   results = [];
-  for (verbName in ref) {
-    verbFunc = ref[verbName];
-    results.push((function(verbName, verbFunc) {
-      obj.url = path;
-      return obj[verbName] = function() {
-        var args, makeRequest;
-        args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-        URL_TESTER(path);
-        makeRequest = function() {
-          var cb, data, method, options, originalArgs, ref1;
-          cb = arguments[0], originalArgs = 2 <= arguments.length ? slice.call(arguments, 1) : [];
-          ref1 = verbFunc.apply(null, [path].concat(slice.call(originalArgs))), method = ref1.method, path = ref1.path, data = ref1.data, options = ref1.options;
-          return request(method, path, data, options, cb);
-        };
-        return toPromise(makeRequest).apply(null, args);
-      };
-    })(verbName, verbFunc));
+  for (i = 0, len = plugins.length; i < len; i++) {
+    plugin = plugins[i];
+    results.push((function() {
+      var ref, results1;
+      ref = plugin.verbs || {};
+      results1 = [];
+      for (verbName in ref) {
+        verbFunc = ref[verbName];
+        results1.push((function(verbName, verbFunc) {
+          obj.url = path;
+          return obj[verbName] = function() {
+            var args, makeRequest;
+            args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+            URL_TESTER(path);
+            makeRequest = function() {
+              var cb, data, method, options, originalArgs, ref1;
+              cb = arguments[0], originalArgs = 2 <= arguments.length ? slice.call(arguments, 1) : [];
+              ref1 = verbFunc.apply(null, [path].concat(slice.call(originalArgs))), method = ref1.method, path = ref1.path, data = ref1.data, options = ref1.options;
+              return request(method, path, data, options, cb);
+            };
+            return toPromise(makeRequest).apply(null, args);
+          };
+        })(verbName, verbFunc));
+      }
+      return results1;
+    })());
   }
   return results;
 };
@@ -1572,5 +1566,5 @@ injectVerbMethods = function(request, path, obj) {
 module.exports = injectVerbMethods;
 
 
-},{"./grammar":3,"./helper-promise":6,"./helper-querystring":7,"./plugin-simple-verbs":12}]},{},[8])(8)
+},{"./grammar":3,"./helper-promise":6,"./helper-querystring":7}]},{},[8])(8)
 });
