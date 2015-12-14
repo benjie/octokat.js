@@ -12400,7 +12400,13 @@ Chainer = function(request, path, name, contextTree, fn) {
 module.exports = Chainer;
 
 
-},{"./plus":13,"./verb-methods":15}],3:[function(require,module,exports){
+},{"./plus":14,"./verb-methods":16}],3:[function(require,module,exports){
+module.exports = function(message) {
+  return typeof console !== "undefined" && console !== null ? typeof console.warn === "function" ? console.warn("Octokat Deprecation: " + message) : void 0 : void 0;
+};
+
+
+},{}],4:[function(require,module,exports){
 var DEFAULT_HEADER, OBJECT_MATCHER, PREVIEW_HEADERS, TREE_OPTIONS, URL_VALIDATOR;
 
 URL_VALIDATOR = /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/(zen|octocat|users|organizations|issues|gists|emojis|markdown|meta|rate_limit|feeds|events|notifications|notifications\/threads(\/[^\/]+)|notifications\/threads(\/[^\/]+)\/subscription|gitignore\/templates(\/[^\/]+)?|user|user\/(repos|orgs|followers|following(\/[^\/]+)?|emails(\/[^\/]+)?|issues|starred|starred(\/[^\/]+){2}|teams)|orgs\/[^\/]+|orgs\/[^\/]+\/(repos|issues|members|events|teams)|teams\/[^\/]+|teams\/[^\/]+\/(members(\/[^\/]+)?|memberships\/[^\/]+|repos|repos(\/[^\/]+){2})|users\/[^\/]+|users\/[^\/]+\/(repos|orgs|gists|followers|following(\/[^\/]+){0,2}|keys|starred|received_events(\/public)?|events(\/public)?|events\/orgs\/[^\/]+)|search\/(repositories|issues|users|code)|gists\/(public|starred|([a-f0-9]{20}|[0-9]+)|([a-f0-9]{20}|[0-9]+)\/forks|([a-f0-9]{20}|[0-9]+)\/comments(\/[0-9]+)?|([a-f0-9]{20}|[0-9]+)\/star)|repos(\/[^\/]+){2}|repos(\/[^\/]+){2}\/(readme|tarball(\/[^\/]+)?|zipball(\/[^\/]+)?|compare\/([^\.{3}]+)\.{3}([^\.{3}]+)|deployments(\/[0-9]+)?|deployments\/[0-9]+\/statuses(\/[0-9]+)?|hooks|hooks\/[^\/]+|hooks\/[^\/]+\/tests|hooks\/[^\/]+\/pings|assignees|languages|teams|tags|branches(\/[^\/]+){0,2}|contributors|subscribers|subscription|stargazers|comments(\/[0-9]+)?|downloads(\/[0-9]+)?|forks|milestones|milestones\/[0-9]+|milestones\/[0-9]+\/labels|labels(\/[^\/]+)?|releases|releases\/([0-9]+)|releases\/([0-9]+)\/assets|releases\/latest|releases\/tags\/([^\/]+)|releases\/assets\/([0-9]+)|events|notifications|merges|statuses\/[^\/]+|pages|pages\/builds|pages\/builds\/latest|commits|commits\/[^\/]+|commits\/[^\/]+\/(comments|status|statuses)?|contents\/|contents(\/[^\/]+)*|collaborators(\/[^\/]+)?|(issues|pulls)|(issues|pulls)\/(events|events\/[0-9]+|comments(\/[0-9]+)?|[0-9]+|[0-9]+\/events|[0-9]+\/comments|[0-9]+\/labels(\/[^\/]+)?)|pulls\/[0-9]+\/(files|commits|merge)|git\/(refs|refs\/(.+|heads(\/[^\/]+)?|tags(\/[^\/]+)?)|trees(\/[^\/]+)?|blobs(\/[a-f0-9]{40}$)?|commits(\/[a-f0-9]{40}$)?)|stats\/(contributors|commit_activity|code_frequency|participation|punch_card))|licenses|licenses\/([^\/]+)|authorizations|authorizations\/((\d+)|clients\/([^\/]{20})|clients\/([^\/]{20})\/([^\/]+))|applications\/([^\/]{20})\/tokens|applications\/([^\/]{20})\/tokens\/([^\/]+)|enterprise\/(settings\/license|stats\/(issues|hooks|milestones|orgs|comments|pages|users|gists|pulls|repos|all))|staff\/indexing_jobs|users\/[^\/]+\/(site_admin|suspended)|setup\/api\/(start|upgrade|configcheck|configure|settings(authorized-keys)?|maintenance))(\?.*)?$/;
@@ -12631,7 +12637,7 @@ module.exports = {
 };
 
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 (function (global){
 var base64encode;
 
@@ -12651,7 +12657,7 @@ module.exports = base64encode;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
@@ -12700,7 +12706,7 @@ module.exports = function() {
 };
 
 
-},{"./helper-querystring":7}],6:[function(require,module,exports){
+},{"./helper-querystring":8}],7:[function(require,module,exports){
 var Promise, allPromises, injector, newPromise, ref, req, toPromise,
   slice = [].slice;
 
@@ -12836,7 +12842,7 @@ module.exports = {
 };
 
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 var toQueryString;
 
 toQueryString = function(options) {
@@ -12856,12 +12862,14 @@ toQueryString = function(options) {
 module.exports = toQueryString;
 
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 (function (global){
-var ALL_PLUGINS, CAMEL_CASE, Chainer, HYPERMEDIA, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, applyHypermedia, injectVerbMethods, parse, plus, reChainChildren, ref, ref1, toPromise, uncamelizeObj,
+var ALL_PLUGINS, CAMEL_CASE, Chainer, HYPERMEDIA, MIDDLEWARE_CACHE_HANDLER, MIDDLEWARE_REQUEST_PLUGINS, MIDDLEWARE_RESPONSE_PLUGINS, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, parse, plus, reChainChildren, ref, ref1, toPromise, uncamelizeObj,
   slice = [].slice;
 
 plus = require('./plus');
+
+deprecate = require('./deprecate');
 
 ref = require('./grammar'), TREE_OPTIONS = ref.TREE_OPTIONS, OBJECT_MATCHER = ref.OBJECT_MATCHER;
 
@@ -12902,11 +12910,12 @@ reChainChildren = function(request, url, obj) {
   return obj;
 };
 
-parse = function(obj, path, requestFn) {
+parse = function(obj, path, requestFn, instance) {
   var url;
   url = obj.url || path;
   if (url) {
     obj = HYPERMEDIA.responseMiddleware({
+      instance: instance,
       requestFn: requestFn,
       data: obj
     }).data;
@@ -12979,7 +12988,7 @@ Octokat = function(clientOptions) {
         return cb(null, val);
       }
       if (!disableHypermedia) {
-        obj = parse(val, path, request);
+        obj = parse(val, path, request, instance);
         return cb(null, obj);
       } else {
         return cb(null, val);
@@ -12989,20 +12998,41 @@ Octokat = function(clientOptions) {
   Chainer(request, '', null, TREE_OPTIONS, instance);
   instance.me = instance.user;
   instance.parse = function(jsonObj) {
-    return parse(jsonObj, '', request);
+    return parse(jsonObj, '', request, instance);
+  };
+  instance._fromUrlWithDefault = function() {
+    var args, defaultFn, path;
+    path = arguments[0], defaultFn = arguments[1], args = 3 <= arguments.length ? slice.call(arguments, 2) : [];
+    path = applyHypermedia.apply(null, [path].concat(slice.call(args)));
+    injectVerbMethods(request, path, defaultFn);
+    return defaultFn;
   };
   instance.fromUrl = function() {
-    var args, path, ret;
+    var args, defaultFn, path;
     path = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
-    path = applyHypermedia.apply(null, [path].concat(slice.call(args)));
-    ret = function() {
+    defaultFn = function() {
       var args;
       args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-      console.log('Octokat Deprecation: call .fetch() explicitly');
-      return ret.fetch.apply(ret, args);
+      deprecate('call ....fetch() explicitly instead of ...()');
+      return defaultFn.fetch.apply(defaultFn, args);
     };
-    injectVerbMethods(request, path, ret);
-    return ret;
+    return instance._fromUrlWithDefault.apply(instance, [path, defaultFn].concat(slice.call(args)));
+  };
+  instance._fromUrlCurried = function(path, defaultFn) {
+    var fn;
+    fn = function() {
+      var templateArgs;
+      templateArgs = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+      if (defaultFn && templateArgs.length === 0) {
+        return defaultFn.apply(fn);
+      } else {
+        return instance.fromUrl.apply(instance, [path].concat(slice.call(templateArgs)));
+      }
+    };
+    if (!/\{/.test(path)) {
+      injectVerbMethods(request, path, fn);
+    }
+    return fn;
   };
   instance.status = toPromise(function(cb) {
     return request('GET', 'https://status.github.com/api/status.json', null, null, cb);
@@ -13023,7 +13053,7 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plugin-cache-handler":9,"./plugin-middleware-request":10,"./plugin-middleware-response":11,"./plus":13,"./request":14,"./verb-methods":15}],9:[function(require,module,exports){
+},{"./chainer":2,"./deprecate":3,"./grammar":4,"./helper-hypermedia":6,"./helper-promise":7,"./plugin-cache-handler":10,"./plugin-middleware-request":11,"./plugin-middleware-response":12,"./plus":14,"./request":15,"./verb-methods":16}],10:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -13081,7 +13111,7 @@ module.exports = new (CacheMiddleware = (function() {
 })());
 
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var AUTHORIZATION, DEFAULT_HEADER, PATH_TEST, PREVIEW_APIS, URL_VALIDATOR, USE_POST_INSTEAD_OF_PATCH, base64encode, ref;
 
 ref = require('./grammar'), URL_VALIDATOR = ref.URL_VALIDATOR, DEFAULT_HEADER = ref.DEFAULT_HEADER;
@@ -13149,11 +13179,13 @@ AUTHORIZATION = {
 module.exports = [USE_POST_INSTEAD_OF_PATCH, PREVIEW_APIS, AUTHORIZATION];
 
 
-},{"./grammar":3,"./helper-base64":4}],11:[function(require,module,exports){
-var CAMEL_CASE, CamelCase, Chainer, HYPERMEDIA, HyperMedia, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, READ_BINARY, ReadBinary, TREE_OPTIONS, applyHypermedia, plus, ref, toPromise,
+},{"./grammar":4,"./helper-base64":5}],12:[function(require,module,exports){
+var CAMEL_CASE, CamelCase, Chainer, HYPERMEDIA, HyperMedia, OBJECT_MATCHER, PAGED_RESULTS, PagedResults, READ_BINARY, ReadBinary, TREE_OPTIONS, applyHypermedia, deprecate, plus, ref, toPromise,
   slice = [].slice;
 
 plus = require('./plus');
+
+deprecate = require('./deprecate');
 
 toPromise = require('./helper-promise').toPromise;
 
@@ -13318,29 +13350,27 @@ HYPERMEDIA = new (HyperMedia = (function() {
   };
 
   HyperMedia.prototype._replaceKeyValue = function(instance, requestFn, acc, key, value) {
-    var fn, newKey;
+    var defaultFn, fn, newKey;
     if (/_url$/.test(key)) {
-      fn = (function(_this) {
-        return function() {
-          var args, cb, contentType, data, ref1, url;
-          cb = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
-          if (!(/\{/.test(value) || /_page_url$/.test(key))) {
-            console.warn('Deprecation warning: Use the .fooUrl field instead of calling the method');
-          }
-          if (/upload_url$/.test(key)) {
-            url = applyHypermedia.apply(null, [value].concat(slice.call(args)));
-            ref1 = args.slice(-2), contentType = ref1[0], data = ref1[1];
-            return requestFn('POST', url, data, {
-              contentType: contentType,
-              raw: true
-            }, cb);
-          } else {
-            return instance.fromUrl.apply(instance, [value].concat(slice.call(args)))(cb);
-          }
+      if (/^upload_url$/.test(key)) {
+        defaultFn = function() {
+          var args;
+          args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+          deprecate('call .upload({name, label}).create(data, contentType)' + ' instead of .upload(name, data, contentType)');
+          return defaultFn.create.apply(defaultFn, args);
         };
-      })(this);
-      fn = toPromise(fn);
-      fn.url = value;
+        fn = function() {
+          var args;
+          args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+          return instance._fromUrlWithDefault.apply(instance, [value, defaultFn].concat(slice.call(args)))();
+        };
+      } else {
+        defaultFn = function() {
+          deprecate('instead of directly calling methods like .nextPage(), use .nextPage.fetch()');
+          return this.fetch();
+        };
+        fn = instance._fromUrlCurried(value, defaultFn);
+      }
       newKey = key.substring(0, key.length - '_url'.length);
       acc[newKey] = fn;
       if (!/\{/.test(value)) {
@@ -13410,7 +13440,7 @@ module.exports = {
 };
 
 
-},{"./chainer":2,"./grammar":3,"./helper-hypermedia":5,"./helper-promise":6,"./plus":13}],12:[function(require,module,exports){
+},{"./chainer":2,"./deprecate":3,"./grammar":4,"./helper-hypermedia":6,"./helper-promise":7,"./plus":14}],13:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
@@ -13453,15 +13483,24 @@ module.exports = {
         }
       };
     },
-    create: function(path, data, isRaw) {
-      return {
-        method: 'POST',
-        path: path,
-        data: data,
-        options: {
-          isRaw: isRaw
-        }
-      };
+    create: function(path, data, contentType) {
+      if (contentType) {
+        return {
+          method: 'POST',
+          path: path,
+          data: data,
+          options: {
+            isRaw: true,
+            contentType: contentType
+          }
+        };
+      } else {
+        return {
+          method: 'POST',
+          path: path,
+          data: data
+        };
+      }
     },
     update: function(path, data) {
       return {
@@ -13495,7 +13534,7 @@ module.exports = {
 };
 
 
-},{"./helper-querystring":7}],13:[function(require,module,exports){
+},{"./helper-querystring":8}],14:[function(require,module,exports){
 var plus;
 
 plus = {
@@ -13537,7 +13576,7 @@ plus = {
 module.exports = plus;
 
 
-},{}],14:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 var DEFAULT_CACHE_HANDLER, DEFAULT_HEADER, Request, _, _cachedETags, ajax, base64encode, userAgent;
 
 _ = require('lodash');
@@ -13777,7 +13816,7 @@ Request = function(instance, clientOptions, ALL_PLUGINS) {
 module.exports = Request;
 
 
-},{"./grammar":3,"./helper-base64":4,"lodash":1}],15:[function(require,module,exports){
+},{"./grammar":4,"./helper-base64":5,"lodash":1}],16:[function(require,module,exports){
 var SIMPLE_VERBS_PLUGIN, URL_TESTER, URL_VALIDATOR, injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
@@ -13825,5 +13864,5 @@ injectVerbMethods = function(request, path, obj) {
 module.exports = injectVerbMethods;
 
 
-},{"./grammar":3,"./helper-promise":6,"./helper-querystring":7,"./plugin-simple-verbs":12}]},{},[8])(8)
+},{"./grammar":4,"./helper-promise":7,"./helper-querystring":8,"./plugin-simple-verbs":13}]},{},[9])(9)
 });

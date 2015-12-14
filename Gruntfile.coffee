@@ -112,6 +112,7 @@ module.exports = (grunt) ->
     coffee:
       compile:
         files:
+          'dist/node/deprecate.js'      : 'src/deprecate.coffee'
           'dist/node/chainer.js'        : 'src/chainer.coffee'
           'dist/node/grammar.js'        : 'src/grammar.coffee'
           'dist/node/helper-base64.js'  : 'src/helper-base64.coffee'

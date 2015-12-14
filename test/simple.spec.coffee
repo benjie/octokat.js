@@ -197,37 +197,75 @@ define ['chai', 'cs!./test-config'], ({assert, expect}, {Octokat, client, USERNA
 
     describe 'Paged Results', () ->
 
-      it "#{GH}.gists.public.fetch().then(results) -> results.nextPage()", (done) ->
-        trapFail STATE[GH].gists.public.fetch()
-        .then (results) ->
-          results.nextPage()
-          .then (moreResults) ->
-            done()
-
-      it "#{GH}.gists.public.fetch().then(results) -> results.prevPage()", (done) ->
-        trapFail STATE[GH].gists.public.fetch()
-        .then (results) ->
-          results.nextPage()
-          .then (moreResults) ->
-            moreResults.prevPage()
-            .then () ->
+      describe 'Deprecated Notation', ->
+        it "#{GH}.gists.public.fetch().then(results) -> results.nextPage()", (done) ->
+          trapFail STATE[GH].gists.public.fetch()
+          .then (results) ->
+            results.nextPage()
+            .then (moreResults) ->
+              expect(moreResults).to.be.an('array')
+              expect(moreResults).to.have.length.at.least(1)
               done()
 
-      it "#{GH}.gists.public.fetch().then(results) -> results.firstPage()", (done) ->
-        trapFail STATE[GH].gists.public.fetch()
-        .then (results) ->
-          results.nextPage()
-          .then (moreResults) ->
-            moreResults.firstPage()
-            .then () ->
+        it "#{GH}.gists.public.fetch().then(results) -> results.prevPage()", (done) ->
+          trapFail STATE[GH].gists.public.fetch()
+          .then (results) ->
+            results.nextPage()
+            .then (moreResults) ->
+              moreResults.prevPage()
+              .then () ->
+                done()
+
+        it "#{GH}.gists.public.fetch().then(results) -> results.firstPage()", (done) ->
+          trapFail STATE[GH].gists.public.fetch()
+          .then (results) ->
+            results.nextPage()
+            .then (moreResults) ->
+              moreResults.firstPage()
+              .then () ->
+                done()
+
+        it "#{GH}.gists.public.fetch().then(results) -> results.lastPage()", (done) ->
+          trapFail STATE[GH].gists.public.fetch()
+          .then (results) ->
+            results.lastPage()
+            .then (moreResults) ->
               done()
 
-      it "#{GH}.gists.public.fetch().then(results) -> results.lastPage()", (done) ->
-        trapFail STATE[GH].gists.public.fetch()
-        .then (results) ->
-          results.lastPage()
-          .then (moreResults) ->
-            done()
+      describe 'New Notation', ->
+        it "#{GH}.gists.public.fetch().then(results) -> results.nextPage.fetch()", (done) ->
+          trapFail STATE[GH].gists.public.fetch()
+          .then (results) ->
+            results.nextPage.fetch()
+            .then (moreResults) ->
+              expect(moreResults).to.be.an('array')
+              expect(moreResults).to.have.length.at.least(1)
+              done()
+
+        it "#{GH}.gists.public.fetch().then(results) -> results.prevPage.fetch()", (done) ->
+          trapFail STATE[GH].gists.public.fetch()
+          .then (results) ->
+            results.nextPage.fetch()
+            .then (moreResults) ->
+              moreResults.prevPage.fetch()
+              .then () ->
+                done()
+
+        it "#{GH}.gists.public.fetch().then(results) -> results.firstPage.fetch()", (done) ->
+          trapFail STATE[GH].gists.public.fetch()
+          .then (results) ->
+            results.nextPage.fetch()
+            .then (moreResults) ->
+              moreResults.firstPage.fetch()
+              .then () ->
+                done()
+
+        it "#{GH}.gists.public.fetch().then(results) -> results.lastPage.fetch()", (done) ->
+          trapFail STATE[GH].gists.public.fetch()
+          .then (results) ->
+            results.lastPage.fetch()
+            .then (moreResults) ->
+              done()
 
 
     describe "#{REPO} = #{GH}.repos(OWNER, NAME)", () ->
