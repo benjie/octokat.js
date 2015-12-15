@@ -130,8 +130,10 @@ module.exports = (grunt) ->
           'dist/node/plugins/read-binary.js'  : 'src/plugins/read-binary.coffee'
           'dist/node/plugins/hypermedia.js'  : 'src/plugins/hypermedia.coffee'
           'dist/node/plugins/camel-case.js'  : 'src/plugins/camel-case.coffee'
-          'dist/node/plugin-middleware-request.js' : 'src/plugin-middleware-request.coffee'
           'dist/node/plugins/cache-handler.js' : 'src/plugins/cache-handler.coffee'
+
+          'dist/node/plugins/fetch-all.js'  : 'src/plugins/fetch-all.coffee'
+
           'dist/node/octokat.js'        : 'src/octokat.coffee'
           'dist/node/plus.js'           : 'src/plus.coffee'
           'dist/node/request.js'        : 'src/request.coffee'
