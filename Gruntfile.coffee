@@ -114,7 +114,10 @@ module.exports = (grunt) ->
         files:
           'dist/node/deprecate.js'      : 'src/deprecate.coffee'
           'dist/node/chainer.js'        : 'src/chainer.coffee'
-          'dist/node/grammar.js'        : 'src/grammar.coffee'
+          'dist/node/grammar/url-validator.js'        : 'src/grammar/url-validator.coffee'
+          'dist/node/grammar/tree-options.js'        : 'src/grammar/tree-options.coffee'
+          'dist/node/grammar/object-matcher.js'        : 'src/grammar/object-matcher.coffee'
+          'dist/node/grammar/preview-headers.js'        : 'src/grammar/preview-headers.coffee'
           'dist/node/helpers/base64.js'  : 'src/helpers/base64.coffee'
           'dist/node/helpers/querystring.js' : 'src/helpers/querystring.coffee'
           'dist/node/helpers/hypermedia.js' : 'src/helpers/hypermedia.coffee'

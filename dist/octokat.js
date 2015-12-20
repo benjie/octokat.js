@@ -1,13 +1,15 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Octokat = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 (function (global){
-var Chainer, OBJECT_MATCHER, OctokatBase, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, uncamelizeObj,
+var Chainer, OBJECT_MATCHER, OctokatBase, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, uncamelizeObj,
   slice = [].slice;
 
 plus = require('./plus');
 
 deprecate = require('./deprecate');
 
-ref = require('./grammar'), TREE_OPTIONS = ref.TREE_OPTIONS, OBJECT_MATCHER = ref.OBJECT_MATCHER;
+TREE_OPTIONS = require('./grammar/tree-options');
+
+OBJECT_MATCHER = require('./grammar/object-matcher');
 
 Chainer = require('./chainer');
 
@@ -18,14 +20,14 @@ Request = require('./request');
 applyHypermedia = require('./helpers/hypermedia');
 
 reChainChildren = function(plugins, request, url, obj) {
-  var context, j, k, key, len, re, ref1;
+  var context, j, k, key, len, re, ref;
   for (key in OBJECT_MATCHER) {
     re = OBJECT_MATCHER[key];
     if (re.test(obj.url)) {
       context = TREE_OPTIONS;
-      ref1 = key.split('.');
-      for (j = 0, len = ref1.length; j < len; j++) {
-        k = ref1[j];
+      ref = key.split('.');
+      for (j = 0, len = ref.length; j < len; j++) {
+        k = ref[j];
         context = context[k];
       }
       Chainer(plugins, request, url, k, context, obj);
@@ -35,7 +37,7 @@ reChainChildren = function(plugins, request, url, obj) {
 };
 
 uncamelizeObj = function(obj) {
-  var i, j, key, len, o, ref1, value;
+  var i, j, key, len, o, ref, value;
   if (Array.isArray(obj)) {
     return (function() {
       var j, len, results;
@@ -48,9 +50,9 @@ uncamelizeObj = function(obj) {
     })();
   } else if (obj === Object(obj)) {
     o = {};
-    ref1 = Object.keys(obj);
-    for (j = 0, len = ref1.length; j < len; j++) {
-      key = ref1[j];
+    ref = Object.keys(obj);
+    for (j = 0, len = ref.length; j < len; j++) {
+      key = ref[j];
       value = obj[key];
       o[plus.uncamelize(key)] = uncamelizeObj(value);
     }
@@ -72,7 +74,7 @@ OctokatBase = function(clientOptions) {
   }
   instance = {};
   request = function(method, path, data, options, cb) {
-    var _request, ref1;
+    var _request, ref;
     if (options == null) {
       options = {
         raw: false,
@@ -80,7 +82,7 @@ OctokatBase = function(clientOptions) {
         isBoolean: false
       };
     }
-    if (data && !(typeof global !== "undefined" && global !== null ? (ref1 = global['Buffer']) != null ? ref1.isBuffer(data) : void 0 : void 0)) {
+    if (data && !(typeof global !== "undefined" && global !== null ? (ref = global['Buffer']) != null ? ref.isBuffer(data) : void 0 : void 0)) {
       data = uncamelizeObj(data);
     }
     _request = Request(instance, clientOptions, plugins);
@@ -191,7 +193,7 @@ module.exports = OctokatBase;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":2,"./deprecate":3,"./grammar":4,"./helpers/hypermedia":6,"./plus":24,"./request":25,"./verb-methods":26}],2:[function(require,module,exports){
+},{"./chainer":2,"./deprecate":3,"./grammar/object-matcher":4,"./grammar/tree-options":6,"./helpers/hypermedia":9,"./plus":27,"./request":28,"./verb-methods":29}],2:[function(require,module,exports){
 var Chainer, injectVerbMethods, plus,
   slice = [].slice;
 
@@ -238,18 +240,33 @@ Chainer = function(plugins, request, path, name, contextTree, fn) {
 module.exports = Chainer;
 
 
-},{"./plus":24,"./verb-methods":26}],3:[function(require,module,exports){
+},{"./plus":27,"./verb-methods":29}],3:[function(require,module,exports){
 module.exports = function(message) {
   return typeof console !== "undefined" && console !== null ? typeof console.warn === "function" ? console.warn("Octokat Deprecation: " + message) : void 0 : void 0;
 };
 
 
 },{}],4:[function(require,module,exports){
-var DEFAULT_HEADER, OBJECT_MATCHER, PREVIEW_HEADERS, TREE_OPTIONS, URL_VALIDATOR;
+module.exports = {
+  'repos': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+$/,
+  'gists': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/gists\/[^\/]+$/,
+  'issues': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+\/(issues|pulls)[^\/]+$/,
+  'users': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/users\/[^\/]+$/,
+  'orgs': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/orgs\/[^\/]+$/,
+  'repos.comments': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+\/comments\/[^\/]+$/
+};
 
-URL_VALIDATOR = /^(https:\/\/status.github.com\/api\/(status.json|last-message.json|messages.json)$)|(https?:\/\/[^\/]+)?(\/api\/v3)?\/(zen|octocat|users|organizations|issues|gists|emojis|markdown|meta|rate_limit|feeds|events|notifications|notifications\/threads(\/[^\/]+)|notifications\/threads(\/[^\/]+)\/subscription|gitignore\/templates(\/[^\/]+)?|user(\/\d+)?|user(\/\d+)?\/(|repos|orgs|followers|following(\/[^\/]+)?|emails(\/[^\/]+)?|issues|starred|starred(\/[^\/]+){2}|teams)|orgs\/[^\/]+|orgs\/[^\/]+\/(repos|issues|members|events|teams)|teams\/[^\/]+|teams\/[^\/]+\/(members(\/[^\/]+)?|memberships\/[^\/]+|repos|repos(\/[^\/]+){2})|users\/[^\/]+|users\/[^\/]+\/(repos|orgs|gists|followers|following(\/[^\/]+){0,2}|keys|starred|received_events(\/public)?|events(\/public)?|events\/orgs\/[^\/]+)|search\/(repositories|issues|users|code)|gists\/(public|starred|([a-f0-9]{20}|[0-9]+)|([a-f0-9]{20}|[0-9]+)\/forks|([a-f0-9]{20}|[0-9]+)\/comments(\/[0-9]+)?|([a-f0-9]{20}|[0-9]+)\/star)|repos(\/[^\/]+){2}|repos(\/[^\/]+){2}\/(readme|tarball(\/[^\/]+)?|zipball(\/[^\/]+)?|compare\/([^\.{3}]+)\.{3}([^\.{3}]+)|deployments(\/[0-9]+)?|deployments\/[0-9]+\/statuses(\/[0-9]+)?|hooks|hooks\/[^\/]+|hooks\/[^\/]+\/tests|hooks\/[^\/]+\/pings|assignees|languages|teams|tags|branches(\/[^\/]+){0,2}|contributors|subscribers|subscription|stargazers|comments(\/[0-9]+)?|downloads(\/[0-9]+)?|forks|milestones|milestones\/[0-9]+|milestones\/[0-9]+\/labels|labels(\/[^\/]+)?|releases|releases\/([0-9]+)|releases\/([0-9]+)\/assets|releases\/latest|releases\/tags\/([^\/]+)|releases\/assets\/([0-9]+)|events|notifications|merges|statuses\/[^\/]+|pages|pages\/builds|pages\/builds\/latest|commits|commits\/[^\/]+|commits\/[^\/]+\/(comments|status|statuses)?|contents\/|contents(\/[^\/]+)*|collaborators(\/[^\/]+)?|(issues|pulls)|(issues|pulls)\/(events|events\/[0-9]+|comments(\/[0-9]+)?|[0-9]+|[0-9]+\/events|[0-9]+\/comments|[0-9]+\/labels(\/[^\/]+)?)|pulls\/[0-9]+\/(files|commits|merge)|git\/(refs|refs\/(.+|heads(\/[^\/]+)?|tags(\/[^\/]+)?)|trees(\/[^\/]+)?|blobs(\/[a-f0-9]{40}$)?|commits(\/[a-f0-9]{40}$)?)|stats\/(contributors|commit_activity|code_frequency|participation|punch_card))|licenses|licenses\/([^\/]+)|authorizations|authorizations\/((\d+)|clients\/([^\/]{20})|clients\/([^\/]{20})\/([^\/]+))|applications\/([^\/]{20})\/tokens|applications\/([^\/]{20})\/tokens\/([^\/]+)|enterprise\/(settings\/license|stats\/(issues|hooks|milestones|orgs|comments|pages|users|gists|pulls|repos|all))|staff\/indexing_jobs|users\/[^\/]+\/(site_admin|suspended)|setup\/api\/(start|upgrade|configcheck|configure|settings(authorized-keys)?|maintenance))(\?.*)?$/;
 
-TREE_OPTIONS = {
+},{}],5:[function(require,module,exports){
+module.exports = {
+  'application/vnd.github.drax-preview+json': /^(https?:\/\/[^\/]+)?(\/api\/v3)?(\/licenses|\/licenses\/([^\/]+)|\/repos\/([^\/]+)\/([^\/]+))$/,
+  'application/vnd.github.v3.star+json': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/users\/([^\/]+)\/starred$/,
+  'application/vnd.github.mirage-preview+json': /^(https?:\/\/[^\/]+)?(\/api\/v3)?(\/authorizations|\/authorizations\/clients\/([^\/]{20})|\/authorizations\/clients\/([^\/]{20})\/([^\/]+)|\/authorizations\/([\d]+)|\/applications\/([^\/]{20})\/tokens|\/applications\/([^\/]{20})\/tokens\/([^\/]+))$/
+};
+
+
+},{}],6:[function(require,module,exports){
+module.exports = {
   'zen': false,
   'octocat': false,
   'organizations': false,
@@ -330,8 +347,7 @@ TREE_OPTIONS = {
       'statuses': false
     },
     'hooks': {
-      'tests': false,
-      'pings': false
+      'tests': false
     },
     'assignees': false,
     'languages': false,
@@ -442,40 +458,12 @@ TREE_OPTIONS = {
   }
 };
 
-OBJECT_MATCHER = {
-  'repos': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+$/,
-  'gists': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/gists\/[^\/]+$/,
-  'issues': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+\/(issues|pulls)[^\/]+$/,
-  'users': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/users\/[^\/]+$/,
-  'orgs': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/orgs\/[^\/]+$/,
-  'repos.comments': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+\/comments\/[^\/]+$/
-};
 
-PREVIEW_HEADERS = {
-  'application/vnd.github.drax-preview+json': /^(https?:\/\/[^\/]+)?(\/api\/v3)?(\/licenses|\/licenses\/([^\/]+)|\/repos\/([^\/]+)\/([^\/]+))$/,
-  'application/vnd.github.v3.star+json': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/users\/([^\/]+)\/starred$/,
-  'application/vnd.github.mirage-preview+json': /^(https?:\/\/[^\/]+)?(\/api\/v3)?(\/authorizations|\/authorizations\/clients\/([^\/]{20})|\/authorizations\/clients\/([^\/]{20})\/([^\/]+)|\/authorizations\/([\d]+)|\/applications\/([^\/]{20})\/tokens|\/applications\/([^\/]{20})\/tokens\/([^\/]+))$/
-};
-
-DEFAULT_HEADER = function(url) {
-  var key, val;
-  for (key in PREVIEW_HEADERS) {
-    val = PREVIEW_HEADERS[key];
-    if (val.test(url)) {
-      return key;
-    }
-  }
-};
-
-module.exports = {
-  URL_VALIDATOR: URL_VALIDATOR,
-  TREE_OPTIONS: TREE_OPTIONS,
-  OBJECT_MATCHER: OBJECT_MATCHER,
-  DEFAULT_HEADER: DEFAULT_HEADER
-};
+},{}],7:[function(require,module,exports){
+module.exports = /^(https:\/\/status.github.com\/api\/(status.json|last-message.json|messages.json)$)|(https?:\/\/[^\/]+)?(\/api\/v3)?\/(zen|octocat|users|organizations|issues|gists|emojis|markdown|meta|rate_limit|feeds|events|notifications|notifications\/threads(\/[^\/]+)|notifications\/threads(\/[^\/]+)\/subscription|gitignore\/templates(\/[^\/]+)?|user(\/\d+)?|user(\/\d+)?\/(|repos|orgs|followers|following(\/[^\/]+)?|emails(\/[^\/]+)?|issues|starred|starred(\/[^\/]+){2}|teams)|orgs\/[^\/]+|orgs\/[^\/]+\/(repos|issues|members|events|teams)|teams\/[^\/]+|teams\/[^\/]+\/(members(\/[^\/]+)?|memberships\/[^\/]+|repos|repos(\/[^\/]+){2})|users\/[^\/]+|users\/[^\/]+\/(repos|orgs|gists|followers|following(\/[^\/]+){0,2}|keys|starred|received_events(\/public)?|events(\/public)?|events\/orgs\/[^\/]+)|search\/(repositories|issues|users|code)|gists\/(public|starred|([a-f0-9]{20}|[0-9]+)|([a-f0-9]{20}|[0-9]+)\/forks|([a-f0-9]{20}|[0-9]+)\/comments(\/[0-9]+)?|([a-f0-9]{20}|[0-9]+)\/star)|repos(\/[^\/]+){2}|repos(\/[^\/]+){2}\/(readme|tarball(\/[^\/]+)?|zipball(\/[^\/]+)?|compare\/([^\.{3}]+)\.{3}([^\.{3}]+)|deployments(\/[0-9]+)?|deployments\/[0-9]+\/statuses(\/[0-9]+)?|hooks|hooks\/[^\/]+|hooks\/[^\/]+\/tests|assignees|languages|teams|tags|branches(\/[^\/]+){0,2}|contributors|subscribers|subscription|stargazers|comments(\/[0-9]+)?|downloads(\/[0-9]+)?|forks|milestones|milestones\/[0-9]+|milestones\/[0-9]+\/labels|labels(\/[^\/]+)?|releases|releases\/([0-9]+)|releases\/([0-9]+)\/assets|releases\/latest|releases\/tags\/([^\/]+)|releases\/assets\/([0-9]+)|events|notifications|merges|statuses\/[a-f0-9]{40}|pages|pages\/builds|pages\/builds\/latest|commits|commits\/[a-f0-9]{40}|commits\/[a-f0-9]{40}\/(comments|status|statuses)?|contents\/|contents(\/[^\/]+)*|collaborators(\/[^\/]+)?|(issues|pulls)|(issues|pulls)\/(events|events\/[0-9]+|comments(\/[0-9]+)?|[0-9]+|[0-9]+\/events|[0-9]+\/comments|[0-9]+\/labels(\/[^\/]+)?)|pulls\/[0-9]+\/(files|commits)|git\/(refs|refs\/(.+|heads(\/[^\/]+)?|tags(\/[^\/]+)?)|trees(\/[^\/]+)?|blobs(\/[a-f0-9]{40}$)?|commits(\/[a-f0-9]{40}$)?)|stats\/(contributors|commit_activity|code_frequency|participation|punch_card))|licenses|licenses\/([^\/]+)|authorizations|authorizations\/((\d+)|clients\/([^\/]{20})|clients\/([^\/]{20})\/([^\/]+))|applications\/([^\/]{20})\/tokens|applications\/([^\/]{20})\/tokens\/([^\/]+)|enterprise\/(settings\/license|stats\/(issues|hooks|milestones|orgs|comments|pages|users|gists|pulls|repos|all))|staff\/indexing_jobs|users\/[^\/]+\/(site_admin|suspended)|setup\/api\/(start|upgrade|configcheck|configure|settings(authorized-keys)?|maintenance))(\?.*)?$/;
 
 
-},{}],5:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 (function (global){
 var base64encode;
 
@@ -495,7 +483,7 @@ module.exports = base64encode;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],6:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 var deprecate, toQueryString,
   slice = [].slice;
 
@@ -569,7 +557,7 @@ module.exports = function() {
 };
 
 
-},{"../deprecate":3,"./querystring":10}],7:[function(require,module,exports){
+},{"../deprecate":3,"./querystring":13}],10:[function(require,module,exports){
 var allPromises, injector, newPromise, ref,
   slice = [].slice;
 
@@ -647,7 +635,7 @@ module.exports = {
 };
 
 
-},{}],8:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var allPromises, newPromise;
 
 if (typeof Promise !== "undefined" && Promise !== null) {
@@ -675,7 +663,7 @@ module.exports = {
 };
 
 
-},{}],9:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 var Promise, allPromises, newPromise, req;
 
 req = require;
@@ -696,7 +684,7 @@ module.exports = {
 };
 
 
-},{}],10:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var toQueryString;
 
 toQueryString = function(options, omitQuestionMark) {
@@ -726,7 +714,7 @@ toQueryString = function(options, omitQuestionMark) {
 module.exports = toQueryString;
 
 
-},{}],11:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 var ALL_PLUGINS, HypermediaPlugin, Octokat, OctokatBase, deprecate;
 
 deprecate = require('./deprecate');
@@ -758,7 +746,7 @@ Octokat = function(clientOptions) {
 module.exports = Octokat;
 
 
-},{"./base":1,"./deprecate":3,"./plugins/authorization":12,"./plugins/cache-handler":13,"./plugins/camel-case":14,"./plugins/fetch-all":15,"./plugins/hypermedia":16,"./plugins/pagination":17,"./plugins/path-check":18,"./plugins/preview-apis":19,"./plugins/promise/library-first":20,"./plugins/read-binary":21,"./plugins/simple-verbs":22,"./plugins/use-post-instead-of-patch":23}],12:[function(require,module,exports){
+},{"./base":1,"./deprecate":3,"./plugins/authorization":15,"./plugins/cache-handler":16,"./plugins/camel-case":17,"./plugins/fetch-all":18,"./plugins/hypermedia":19,"./plugins/pagination":20,"./plugins/path-check":21,"./plugins/preview-apis":22,"./plugins/promise/library-first":23,"./plugins/read-binary":24,"./plugins/simple-verbs":25,"./plugins/use-post-instead-of-patch":26}],15:[function(require,module,exports){
 var base64encode;
 
 base64encode = require('../helpers/base64');
@@ -783,7 +771,7 @@ module.exports = {
 };
 
 
-},{"../helpers/base64":5}],13:[function(require,module,exports){
+},{"../helpers/base64":8}],16:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -847,7 +835,7 @@ module.exports = new (CacheMiddleware = (function() {
 })());
 
 
-},{}],14:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var CamelCase, plus;
 
 plus = require('../plus');
@@ -917,7 +905,7 @@ module.exports = new (CamelCase = (function() {
 })());
 
 
-},{"../plus":24}],15:[function(require,module,exports){
+},{"../plus":27}],18:[function(require,module,exports){
 var fetchNextPage, getMore, pushAll;
 
 pushAll = function(target, source) {
@@ -975,7 +963,7 @@ module.exports = {
 };
 
 
-},{}],16:[function(require,module,exports){
+},{}],19:[function(require,module,exports){
 var HyperMedia, deprecate,
   slice = [].slice;
 
@@ -1076,7 +1064,7 @@ module.exports = new (HyperMedia = (function() {
 })());
 
 
-},{"../deprecate":3}],17:[function(require,module,exports){
+},{"../deprecate":3}],20:[function(require,module,exports){
 var Pagination;
 
 module.exports = new (Pagination = (function() {
@@ -1108,10 +1096,10 @@ module.exports = new (Pagination = (function() {
 })());
 
 
-},{}],18:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 var URL_VALIDATOR;
 
-URL_VALIDATOR = require('../grammar').URL_VALIDATOR;
+URL_VALIDATOR = require('../grammar/url-validator');
 
 module.exports = {
   requestMiddleware: function(arg) {
@@ -1125,10 +1113,20 @@ module.exports = {
 };
 
 
-},{"../grammar":4}],19:[function(require,module,exports){
-var DEFAULT_HEADER;
+},{"../grammar/url-validator":7}],22:[function(require,module,exports){
+var DEFAULT_HEADER, PREVIEW_HEADERS;
 
-DEFAULT_HEADER = require('../grammar').DEFAULT_HEADER;
+PREVIEW_HEADERS = require('../grammar/preview-headers');
+
+DEFAULT_HEADER = function(url) {
+  var key, val;
+  for (key in PREVIEW_HEADERS) {
+    val = PREVIEW_HEADERS[key];
+    if (val.test(url)) {
+      return key;
+    }
+  }
+};
 
 module.exports = {
   requestMiddleware: function(arg) {
@@ -1146,7 +1144,7 @@ module.exports = {
 };
 
 
-},{"../grammar":4}],20:[function(require,module,exports){
+},{"../grammar/preview-headers":5}],23:[function(require,module,exports){
 var allPromises, newPromise, ref, ref1, ref2;
 
 ref = require('../../helpers/promise-find-library'), newPromise = ref.newPromise, allPromises = ref.allPromises;
@@ -1177,7 +1175,7 @@ module.exports = {
 };
 
 
-},{"../../helpers/promise-find-library":7,"../../helpers/promise-find-native":8,"../../helpers/promise-node":9}],21:[function(require,module,exports){
+},{"../../helpers/promise-find-library":10,"../../helpers/promise-find-native":11,"../../helpers/promise-node":12}],24:[function(require,module,exports){
 var ReadBinary, toQueryString;
 
 toQueryString = require('../helpers/querystring');
@@ -1232,7 +1230,7 @@ module.exports = new (ReadBinary = (function() {
 })());
 
 
-},{"../helpers/querystring":10}],22:[function(require,module,exports){
+},{"../helpers/querystring":13}],25:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
@@ -1316,7 +1314,7 @@ module.exports = {
 };
 
 
-},{"../helpers/querystring":10}],23:[function(require,module,exports){
+},{"../helpers/querystring":13}],26:[function(require,module,exports){
 module.exports = {
   requestMiddleware: function(arg) {
     var method, ref, usePostInsteadOfPatch;
@@ -1330,7 +1328,7 @@ module.exports = {
 };
 
 
-},{}],24:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 var plus;
 
 plus = {
@@ -1384,7 +1382,7 @@ plus = {
 module.exports = plus;
 
 
-},{}],25:[function(require,module,exports){
+},{}],28:[function(require,module,exports){
 var DEFAULT_CACHE_HANDLER, Request, _cachedETags, ajax, plus, userAgent;
 
 plus = require('./plus');
@@ -1611,7 +1609,7 @@ Request = function(instance, clientOptions, ALL_PLUGINS) {
 module.exports = Request;
 
 
-},{"./plus":24}],26:[function(require,module,exports){
+},{"./plus":27}],29:[function(require,module,exports){
 var injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
@@ -1701,5 +1699,5 @@ injectVerbMethods = function(plugins, request, path, obj) {
 module.exports = injectVerbMethods;
 
 
-},{"./helpers/querystring":10}]},{},[11])(11)
+},{"./helpers/querystring":13}]},{},[14])(14)
 });
