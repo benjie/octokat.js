@@ -140,6 +140,7 @@ module.exports = (grunt) ->
 
           'dist/node/plugins/fetch-all.js'  : 'src/plugins/fetch-all.coffee'
 
+          'dist/node/base.js'           : 'src/base.coffee'
           'dist/node/octokat.js'        : 'src/octokat.coffee'
           'dist/node/plus.js'           : 'src/plus.coffee'
           'dist/node/request.js'        : 'src/request.coffee'

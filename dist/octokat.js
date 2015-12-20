@@ -1,4 +1,197 @@
 (function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.Octokat = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function (global){
+var Chainer, OBJECT_MATCHER, OctokatBase, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, uncamelizeObj,
+  slice = [].slice;
+
+plus = require('./plus');
+
+deprecate = require('./deprecate');
+
+ref = require('./grammar'), TREE_OPTIONS = ref.TREE_OPTIONS, OBJECT_MATCHER = ref.OBJECT_MATCHER;
+
+Chainer = require('./chainer');
+
+injectVerbMethods = require('./verb-methods');
+
+Request = require('./request');
+
+applyHypermedia = require('./helpers/hypermedia');
+
+reChainChildren = function(plugins, request, url, obj) {
+  var context, j, k, key, len, re, ref1;
+  for (key in OBJECT_MATCHER) {
+    re = OBJECT_MATCHER[key];
+    if (re.test(obj.url)) {
+      context = TREE_OPTIONS;
+      ref1 = key.split('.');
+      for (j = 0, len = ref1.length; j < len; j++) {
+        k = ref1[j];
+        context = context[k];
+      }
+      Chainer(plugins, request, url, k, context, obj);
+    }
+  }
+  return obj;
+};
+
+uncamelizeObj = function(obj) {
+  var i, j, key, len, o, ref1, value;
+  if (Array.isArray(obj)) {
+    return (function() {
+      var j, len, results;
+      results = [];
+      for (j = 0, len = obj.length; j < len; j++) {
+        i = obj[j];
+        results.push(uncamelizeObj(i));
+      }
+      return results;
+    })();
+  } else if (obj === Object(obj)) {
+    o = {};
+    ref1 = Object.keys(obj);
+    for (j = 0, len = ref1.length; j < len; j++) {
+      key = ref1[j];
+      value = obj[key];
+      o[plus.uncamelize(key)] = uncamelizeObj(value);
+    }
+    return o;
+  } else {
+    return obj;
+  }
+};
+
+OctokatBase = function(clientOptions) {
+  var disableHypermedia, instance, plugins, request;
+  if (clientOptions == null) {
+    clientOptions = {};
+  }
+  plugins = clientOptions.plugins || [];
+  disableHypermedia = clientOptions.disableHypermedia;
+  if (disableHypermedia == null) {
+    disableHypermedia = false;
+  }
+  instance = {};
+  request = function(method, path, data, options, cb) {
+    var _request, ref1;
+    if (options == null) {
+      options = {
+        raw: false,
+        isBase64: false,
+        isBoolean: false
+      };
+    }
+    if (data && !(typeof global !== "undefined" && global !== null ? (ref1 = global['Buffer']) != null ? ref1.isBuffer(data) : void 0 : void 0)) {
+      data = uncamelizeObj(data);
+    }
+    _request = Request(instance, clientOptions, plugins);
+    return _request(method, path, data, options, function(err, val) {
+      var context, obj;
+      if (err) {
+        return cb(err);
+      }
+      if (options.raw) {
+        return cb(null, val);
+      }
+      if (!disableHypermedia) {
+        context = {
+          data: val,
+          requestFn: _request,
+          instance: instance,
+          clientOptions: clientOptions
+        };
+        obj = instance._parseWithContext(path, context);
+        return cb(null, obj);
+      } else {
+        return cb(null, val);
+      }
+    });
+  };
+  Chainer(plugins, request, '', null, TREE_OPTIONS, instance);
+  instance.me = instance.user;
+  instance.parse = function(data) {
+    var context;
+    context = {
+      requestFn: request,
+      data: data,
+      instance: instance,
+      clientOptions: clientOptions
+    };
+    return instance._parseWithContext('', context);
+  };
+  instance._parseWithContext = function(path, context) {
+    var data, datum, j, l, len, len1, plugin, requestFn, url;
+    data = context.data, requestFn = context.requestFn;
+    url = data.url || path;
+    if (context.options == null) {
+      context.options = {};
+    }
+    for (j = 0, len = plugins.length; j < len; j++) {
+      plugin = plugins[j];
+      if (plugin.responseMiddleware) {
+        plus.extend(context, plugin.responseMiddleware(context));
+      }
+    }
+    data = context.data;
+    if (url) {
+      Chainer(plugins, requestFn, url, true, {}, data);
+      reChainChildren(plugins, requestFn, url, data);
+    } else {
+      Chainer(plugins, requestFn, '', null, TREE_OPTIONS, data);
+      if (Array.isArray(data)) {
+        for (l = 0, len1 = data.length; l < len1; l++) {
+          datum = data[l];
+          reChainChildren(plugins, requestFn, datum.url, datum);
+        }
+      }
+    }
+    return data;
+  };
+  instance._fromUrlWithDefault = function() {
+    var args, defaultFn, path;
+    path = arguments[0], defaultFn = arguments[1], args = 3 <= arguments.length ? slice.call(arguments, 2) : [];
+    path = applyHypermedia.apply(null, [path].concat(slice.call(args)));
+    injectVerbMethods(plugins, request, path, defaultFn);
+    return defaultFn;
+  };
+  instance.fromUrl = function() {
+    var args, defaultFn, path;
+    path = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
+    defaultFn = function() {
+      var args;
+      args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+      deprecate('call ....fetch() explicitly instead of ...()');
+      return defaultFn.fetch.apply(defaultFn, args);
+    };
+    return instance._fromUrlWithDefault.apply(instance, [path, defaultFn].concat(slice.call(args)));
+  };
+  instance._fromUrlCurried = function(path, defaultFn) {
+    var fn;
+    fn = function() {
+      var templateArgs;
+      templateArgs = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+      if (defaultFn && templateArgs.length === 0) {
+        return defaultFn.apply(fn);
+      } else {
+        return instance.fromUrl.apply(instance, [path].concat(slice.call(templateArgs)));
+      }
+    };
+    if (!/\{/.test(path)) {
+      injectVerbMethods(plugins, request, path, fn);
+    }
+    return fn;
+  };
+  instance.status = instance.fromUrl('https://status.github.com/api/status.json');
+  instance.status.api = instance.fromUrl('https://status.github.com/api.json');
+  instance.status.lastMessage = instance.fromUrl('https://status.github.com/api/last-message.json');
+  instance.status.messages = instance.fromUrl('https://status.github.com/api/messages.json');
+  return instance;
+};
+
+module.exports = OctokatBase;
+
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./chainer":2,"./deprecate":3,"./grammar":4,"./helpers/hypermedia":6,"./plus":24,"./request":25,"./verb-methods":26}],2:[function(require,module,exports){
 var Chainer, injectVerbMethods, plus,
   slice = [].slice;
 
@@ -45,13 +238,13 @@ Chainer = function(plugins, request, path, name, contextTree, fn) {
 module.exports = Chainer;
 
 
-},{"./plus":23,"./verb-methods":25}],2:[function(require,module,exports){
+},{"./plus":24,"./verb-methods":26}],3:[function(require,module,exports){
 module.exports = function(message) {
   return typeof console !== "undefined" && console !== null ? typeof console.warn === "function" ? console.warn("Octokat Deprecation: " + message) : void 0 : void 0;
 };
 
 
-},{}],3:[function(require,module,exports){
+},{}],4:[function(require,module,exports){
 var DEFAULT_HEADER, OBJECT_MATCHER, PREVIEW_HEADERS, TREE_OPTIONS, URL_VALIDATOR;
 
 URL_VALIDATOR = /^(https:\/\/status.github.com\/api\/(status.json|last-message.json|messages.json)$)|(https?:\/\/[^\/]+)?(\/api\/v3)?\/(zen|octocat|users|organizations|issues|gists|emojis|markdown|meta|rate_limit|feeds|events|notifications|notifications\/threads(\/[^\/]+)|notifications\/threads(\/[^\/]+)\/subscription|gitignore\/templates(\/[^\/]+)?|user(\/\d+)?|user(\/\d+)?\/(|repos|orgs|followers|following(\/[^\/]+)?|emails(\/[^\/]+)?|issues|starred|starred(\/[^\/]+){2}|teams)|orgs\/[^\/]+|orgs\/[^\/]+\/(repos|issues|members|events|teams)|teams\/[^\/]+|teams\/[^\/]+\/(members(\/[^\/]+)?|memberships\/[^\/]+|repos|repos(\/[^\/]+){2})|users\/[^\/]+|users\/[^\/]+\/(repos|orgs|gists|followers|following(\/[^\/]+){0,2}|keys|starred|received_events(\/public)?|events(\/public)?|events\/orgs\/[^\/]+)|search\/(repositories|issues|users|code)|gists\/(public|starred|([a-f0-9]{20}|[0-9]+)|([a-f0-9]{20}|[0-9]+)\/forks|([a-f0-9]{20}|[0-9]+)\/comments(\/[0-9]+)?|([a-f0-9]{20}|[0-9]+)\/star)|repos(\/[^\/]+){2}|repos(\/[^\/]+){2}\/(readme|tarball(\/[^\/]+)?|zipball(\/[^\/]+)?|compare\/([^\.{3}]+)\.{3}([^\.{3}]+)|deployments(\/[0-9]+)?|deployments\/[0-9]+\/statuses(\/[0-9]+)?|hooks|hooks\/[^\/]+|hooks\/[^\/]+\/tests|hooks\/[^\/]+\/pings|assignees|languages|teams|tags|branches(\/[^\/]+){0,2}|contributors|subscribers|subscription|stargazers|comments(\/[0-9]+)?|downloads(\/[0-9]+)?|forks|milestones|milestones\/[0-9]+|milestones\/[0-9]+\/labels|labels(\/[^\/]+)?|releases|releases\/([0-9]+)|releases\/([0-9]+)\/assets|releases\/latest|releases\/tags\/([^\/]+)|releases\/assets\/([0-9]+)|events|notifications|merges|statuses\/[^\/]+|pages|pages\/builds|pages\/builds\/latest|commits|commits\/[^\/]+|commits\/[^\/]+\/(comments|status|statuses)?|contents\/|contents(\/[^\/]+)*|collaborators(\/[^\/]+)?|(issues|pulls)|(issues|pulls)\/(events|events\/[0-9]+|comments(\/[0-9]+)?|[0-9]+|[0-9]+\/events|[0-9]+\/comments|[0-9]+\/labels(\/[^\/]+)?)|pulls\/[0-9]+\/(files|commits|merge)|git\/(refs|refs\/(.+|heads(\/[^\/]+)?|tags(\/[^\/]+)?)|trees(\/[^\/]+)?|blobs(\/[a-f0-9]{40}$)?|commits(\/[a-f0-9]{40}$)?)|stats\/(contributors|commit_activity|code_frequency|participation|punch_card))|licenses|licenses\/([^\/]+)|authorizations|authorizations\/((\d+)|clients\/([^\/]{20})|clients\/([^\/]{20})\/([^\/]+))|applications\/([^\/]{20})\/tokens|applications\/([^\/]{20})\/tokens\/([^\/]+)|enterprise\/(settings\/license|stats\/(issues|hooks|milestones|orgs|comments|pages|users|gists|pulls|repos|all))|staff\/indexing_jobs|users\/[^\/]+\/(site_admin|suspended)|setup\/api\/(start|upgrade|configcheck|configure|settings(authorized-keys)?|maintenance))(\?.*)?$/;
@@ -282,7 +475,7 @@ module.exports = {
 };
 
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 (function (global){
 var base64encode;
 
@@ -302,7 +495,7 @@ module.exports = base64encode;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],5:[function(require,module,exports){
+},{}],6:[function(require,module,exports){
 var deprecate, toQueryString,
   slice = [].slice;
 
@@ -376,7 +569,7 @@ module.exports = function() {
 };
 
 
-},{"../deprecate":2,"./querystring":9}],6:[function(require,module,exports){
+},{"../deprecate":3,"./querystring":10}],7:[function(require,module,exports){
 var allPromises, injector, newPromise, ref,
   slice = [].slice;
 
@@ -454,7 +647,7 @@ module.exports = {
 };
 
 
-},{}],7:[function(require,module,exports){
+},{}],8:[function(require,module,exports){
 var allPromises, newPromise;
 
 if (typeof Promise !== "undefined" && Promise !== null) {
@@ -482,7 +675,7 @@ module.exports = {
 };
 
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 var Promise, allPromises, newPromise, req;
 
 req = require;
@@ -503,7 +696,7 @@ module.exports = {
 };
 
 
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 var toQueryString;
 
 toQueryString = function(options, omitQuestionMark) {
@@ -533,202 +726,39 @@ toQueryString = function(options, omitQuestionMark) {
 module.exports = toQueryString;
 
 
-},{}],10:[function(require,module,exports){
-(function (global){
-var ALL_PLUGINS, Chainer, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, uncamelizeObj,
-  slice = [].slice;
-
-plus = require('./plus');
+},{}],11:[function(require,module,exports){
+var ALL_PLUGINS, HypermediaPlugin, Octokat, OctokatBase, deprecate;
 
 deprecate = require('./deprecate');
 
-ref = require('./grammar'), TREE_OPTIONS = ref.TREE_OPTIONS, OBJECT_MATCHER = ref.OBJECT_MATCHER;
+OctokatBase = require('./base');
 
-Chainer = require('./chainer');
+HypermediaPlugin = require('./plugins/hypermedia');
 
-injectVerbMethods = require('./verb-methods');
-
-Request = require('./request');
-
-applyHypermedia = require('./helpers/hypermedia');
-
-ALL_PLUGINS = [require('./plugins/promise/library-first'), require('./plugins/path-check'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/fetch-all'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), require('./plugins/hypermedia'), require('./plugins/camel-case')];
-
-reChainChildren = function(plugins, request, url, obj) {
-  var context, j, k, key, len, re, ref1;
-  for (key in OBJECT_MATCHER) {
-    re = OBJECT_MATCHER[key];
-    if (re.test(obj.url)) {
-      context = TREE_OPTIONS;
-      ref1 = key.split('.');
-      for (j = 0, len = ref1.length; j < len; j++) {
-        k = ref1[j];
-        context = context[k];
-      }
-      Chainer(plugins, request, url, k, context, obj);
-    }
-  }
-  return obj;
-};
-
-uncamelizeObj = function(obj) {
-  var i, j, key, len, o, ref1, value;
-  if (Array.isArray(obj)) {
-    return (function() {
-      var j, len, results;
-      results = [];
-      for (j = 0, len = obj.length; j < len; j++) {
-        i = obj[j];
-        results.push(uncamelizeObj(i));
-      }
-      return results;
-    })();
-  } else if (obj === Object(obj)) {
-    o = {};
-    ref1 = Object.keys(obj);
-    for (j = 0, len = ref1.length; j < len; j++) {
-      key = ref1[j];
-      value = obj[key];
-      o[plus.uncamelize(key)] = uncamelizeObj(value);
-    }
-    return o;
-  } else {
-    return obj;
-  }
-};
+ALL_PLUGINS = [require('./plugins/promise/library-first'), require('./plugins/path-check'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/fetch-all'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), HypermediaPlugin, require('./plugins/camel-case')];
 
 Octokat = function(clientOptions) {
-  var disableHypermedia, instance, plugins, request;
+  var instance;
   if (clientOptions == null) {
     clientOptions = {};
   }
-  plugins = clientOptions.plugins || ALL_PLUGINS;
-  disableHypermedia = clientOptions.disableHypermedia;
-  if (disableHypermedia == null) {
-    disableHypermedia = false;
+  if (clientOptions.plugins == null) {
+    clientOptions.plugins = ALL_PLUGINS;
   }
-  instance = {};
-  request = function(method, path, data, options, cb) {
-    var _request, ref1;
-    if (options == null) {
-      options = {
-        raw: false,
-        isBase64: false,
-        isBoolean: false
-      };
-    }
-    if (data && !(typeof global !== "undefined" && global !== null ? (ref1 = global['Buffer']) != null ? ref1.isBuffer(data) : void 0 : void 0)) {
-      data = uncamelizeObj(data);
-    }
-    _request = Request(instance, clientOptions, plugins);
-    return _request(method, path, data, options, function(err, val) {
-      var context, obj;
-      if (err) {
-        return cb(err);
-      }
-      if (options.raw) {
-        return cb(null, val);
-      }
-      if (!disableHypermedia) {
-        context = {
-          data: val,
-          requestFn: _request,
-          instance: instance,
-          clientOptions: clientOptions
-        };
-        obj = instance._parseWithContext(path, context);
-        return cb(null, obj);
-      } else {
-        return cb(null, val);
-      }
+  if (clientOptions.disableHypermedia) {
+    deprecate('Please use the clientOptions.plugins array and just do not include the hypermedia plugin');
+    clientOptions.plugins = clientOptions.plugins.filter(function(plugin) {
+      return plugin !== HypermediaPlugin;
     });
-  };
-  Chainer(plugins, request, '', null, TREE_OPTIONS, instance);
-  instance.me = instance.user;
-  instance.parse = function(data) {
-    var context;
-    context = {
-      requestFn: request,
-      data: data,
-      instance: instance,
-      clientOptions: clientOptions
-    };
-    return instance._parseWithContext('', context);
-  };
-  instance._parseWithContext = function(path, context) {
-    var data, datum, j, l, len, len1, plugin, requestFn, url;
-    data = context.data, requestFn = context.requestFn;
-    url = data.url || path;
-    if (context.options == null) {
-      context.options = {};
-    }
-    for (j = 0, len = plugins.length; j < len; j++) {
-      plugin = plugins[j];
-      if (plugin.responseMiddleware) {
-        plus.extend(context, plugin.responseMiddleware(context));
-      }
-    }
-    data = context.data;
-    if (url) {
-      Chainer(plugins, requestFn, url, true, {}, data);
-      reChainChildren(plugins, requestFn, url, data);
-    } else {
-      Chainer(plugins, requestFn, '', null, TREE_OPTIONS, data);
-      if (Array.isArray(data)) {
-        for (l = 0, len1 = data.length; l < len1; l++) {
-          datum = data[l];
-          reChainChildren(plugins, requestFn, datum.url, datum);
-        }
-      }
-    }
-    return data;
-  };
-  instance._fromUrlWithDefault = function() {
-    var args, defaultFn, path;
-    path = arguments[0], defaultFn = arguments[1], args = 3 <= arguments.length ? slice.call(arguments, 2) : [];
-    path = applyHypermedia.apply(null, [path].concat(slice.call(args)));
-    injectVerbMethods(plugins, request, path, defaultFn);
-    return defaultFn;
-  };
-  instance.fromUrl = function() {
-    var args, defaultFn, path;
-    path = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
-    defaultFn = function() {
-      var args;
-      args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-      deprecate('call ....fetch() explicitly instead of ...()');
-      return defaultFn.fetch.apply(defaultFn, args);
-    };
-    return instance._fromUrlWithDefault.apply(instance, [path, defaultFn].concat(slice.call(args)));
-  };
-  instance._fromUrlCurried = function(path, defaultFn) {
-    var fn;
-    fn = function() {
-      var templateArgs;
-      templateArgs = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-      if (defaultFn && templateArgs.length === 0) {
-        return defaultFn.apply(fn);
-      } else {
-        return instance.fromUrl.apply(instance, [path].concat(slice.call(templateArgs)));
-      }
-    };
-    if (!/\{/.test(path)) {
-      injectVerbMethods(plugins, request, path, fn);
-    }
-    return fn;
-  };
-  instance.status = instance.fromUrl('https://status.github.com/api/status.json');
-  instance.status.api = instance.fromUrl('https://status.github.com/api.json');
-  instance.status.lastMessage = instance.fromUrl('https://status.github.com/api/last-message.json');
-  instance.status.messages = instance.fromUrl('https://status.github.com/api/messages.json');
+  }
+  instance = new OctokatBase(clientOptions);
   return instance;
 };
 
 module.exports = Octokat;
 
 
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helpers/hypermedia":5,"./plugins/authorization":11,"./plugins/cache-handler":12,"./plugins/camel-case":13,"./plugins/fetch-all":14,"./plugins/hypermedia":15,"./plugins/pagination":16,"./plugins/path-check":17,"./plugins/preview-apis":18,"./plugins/promise/library-first":19,"./plugins/read-binary":20,"./plugins/simple-verbs":21,"./plugins/use-post-instead-of-patch":22,"./plus":23,"./request":24,"./verb-methods":25}],11:[function(require,module,exports){
+},{"./base":1,"./deprecate":3,"./plugins/authorization":12,"./plugins/cache-handler":13,"./plugins/camel-case":14,"./plugins/fetch-all":15,"./plugins/hypermedia":16,"./plugins/pagination":17,"./plugins/path-check":18,"./plugins/preview-apis":19,"./plugins/promise/library-first":20,"./plugins/read-binary":21,"./plugins/simple-verbs":22,"./plugins/use-post-instead-of-patch":23}],12:[function(require,module,exports){
 var base64encode;
 
 base64encode = require('../helpers/base64');
@@ -753,7 +783,7 @@ module.exports = {
 };
 
 
-},{"../helpers/base64":4}],12:[function(require,module,exports){
+},{"../helpers/base64":5}],13:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -817,7 +847,7 @@ module.exports = new (CacheMiddleware = (function() {
 })());
 
 
-},{}],13:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 var CamelCase, plus;
 
 plus = require('../plus');
@@ -887,7 +917,7 @@ module.exports = new (CamelCase = (function() {
 })());
 
 
-},{"../plus":23}],14:[function(require,module,exports){
+},{"../plus":24}],15:[function(require,module,exports){
 var fetchNextPage, getMore, pushAll;
 
 pushAll = function(target, source) {
@@ -945,7 +975,7 @@ module.exports = {
 };
 
 
-},{}],15:[function(require,module,exports){
+},{}],16:[function(require,module,exports){
 var HyperMedia, deprecate,
   slice = [].slice;
 
@@ -1046,7 +1076,7 @@ module.exports = new (HyperMedia = (function() {
 })());
 
 
-},{"../deprecate":2}],16:[function(require,module,exports){
+},{"../deprecate":3}],17:[function(require,module,exports){
 var Pagination;
 
 module.exports = new (Pagination = (function() {
@@ -1078,7 +1108,7 @@ module.exports = new (Pagination = (function() {
 })());
 
 
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 var URL_VALIDATOR;
 
 URL_VALIDATOR = require('../grammar').URL_VALIDATOR;
@@ -1095,7 +1125,7 @@ module.exports = {
 };
 
 
-},{"../grammar":3}],18:[function(require,module,exports){
+},{"../grammar":4}],19:[function(require,module,exports){
 var DEFAULT_HEADER;
 
 DEFAULT_HEADER = require('../grammar').DEFAULT_HEADER;
@@ -1116,7 +1146,7 @@ module.exports = {
 };
 
 
-},{"../grammar":3}],19:[function(require,module,exports){
+},{"../grammar":4}],20:[function(require,module,exports){
 var allPromises, newPromise, ref, ref1, ref2;
 
 ref = require('../../helpers/promise-find-library'), newPromise = ref.newPromise, allPromises = ref.allPromises;
@@ -1147,7 +1177,7 @@ module.exports = {
 };
 
 
-},{"../../helpers/promise-find-library":6,"../../helpers/promise-find-native":7,"../../helpers/promise-node":8}],20:[function(require,module,exports){
+},{"../../helpers/promise-find-library":7,"../../helpers/promise-find-native":8,"../../helpers/promise-node":9}],21:[function(require,module,exports){
 var ReadBinary, toQueryString;
 
 toQueryString = require('../helpers/querystring');
@@ -1202,7 +1232,7 @@ module.exports = new (ReadBinary = (function() {
 })());
 
 
-},{"../helpers/querystring":9}],21:[function(require,module,exports){
+},{"../helpers/querystring":10}],22:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
@@ -1286,7 +1316,7 @@ module.exports = {
 };
 
 
-},{"../helpers/querystring":9}],22:[function(require,module,exports){
+},{"../helpers/querystring":10}],23:[function(require,module,exports){
 module.exports = {
   requestMiddleware: function(arg) {
     var method, ref, usePostInsteadOfPatch;
@@ -1300,7 +1330,7 @@ module.exports = {
 };
 
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var plus;
 
 plus = {
@@ -1354,7 +1384,7 @@ plus = {
 module.exports = plus;
 
 
-},{}],24:[function(require,module,exports){
+},{}],25:[function(require,module,exports){
 var DEFAULT_CACHE_HANDLER, Request, _cachedETags, ajax, plus, userAgent;
 
 plus = require('./plus');
@@ -1581,7 +1611,7 @@ Request = function(instance, clientOptions, ALL_PLUGINS) {
 module.exports = Request;
 
 
-},{"./plus":23}],25:[function(require,module,exports){
+},{"./plus":24}],26:[function(require,module,exports){
 var injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
@@ -1671,5 +1701,5 @@ injectVerbMethods = function(plugins, request, path, obj) {
 module.exports = injectVerbMethods;
 
 
-},{"./helpers/querystring":9}]},{},[10])(10)
+},{"./helpers/querystring":10}]},{},[11])(11)
 });
