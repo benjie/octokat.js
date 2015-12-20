@@ -116,9 +116,15 @@ module.exports = (grunt) ->
           'dist/node/chainer.js'        : 'src/chainer.coffee'
           'dist/node/grammar.js'        : 'src/grammar.coffee'
           'dist/node/helpers/base64.js'  : 'src/helpers/base64.coffee'
-          'dist/node/helpers/promise.js' : 'src/helpers/promise.coffee'
           'dist/node/helpers/querystring.js' : 'src/helpers/querystring.coffee'
           'dist/node/helpers/hypermedia.js' : 'src/helpers/hypermedia.coffee'
+          'dist/node/helpers/promise-find-library.js' : 'src/helpers/promise-find-library.coffee'
+          'dist/node/helpers/promise-find-native.js' : 'src/helpers/promise-find-native.coffee'
+          'dist/node/helpers/promise-node.js' : 'src/helpers/promise-node.coffee'
+
+          'dist/node/plugins/promise/library-first.js'  : 'src/plugins/promise/library-first.coffee'
+          'dist/node/plugins/promise/native-first.js'  : 'src/plugins/promise/native-first.coffee'
+          'dist/node/plugins/promise/native-only.js'  : 'src/plugins/promise/native-only.coffee'
 
           'dist/node/plugins/path-check.js'  : 'src/plugins/path-check.coffee'
           'dist/node/plugins/preview-apis.js'  : 'src/plugins/preview-apis.coffee'

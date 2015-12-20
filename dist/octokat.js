@@ -45,7 +45,7 @@ Chainer = function(plugins, request, path, name, contextTree, fn) {
 module.exports = Chainer;
 
 
-},{"./plus":20,"./verb-methods":22}],2:[function(require,module,exports){
+},{"./plus":23,"./verb-methods":25}],2:[function(require,module,exports){
 module.exports = function(message) {
   return typeof console !== "undefined" && console !== null ? typeof console.warn === "function" ? console.warn("Octokat Deprecation: " + message) : void 0 : void 0;
 };
@@ -376,8 +376,8 @@ module.exports = function() {
 };
 
 
-},{"../deprecate":2,"./querystring":7}],6:[function(require,module,exports){
-var Promise, allPromises, injector, newPromise, ref, req, toPromise,
+},{"../deprecate":2,"./querystring":9}],6:[function(require,module,exports){
+var allPromises, injector, newPromise, ref,
   slice = [].slice;
 
 if (typeof window !== "undefined" && window !== null) {
@@ -445,74 +445,65 @@ if (typeof window !== "undefined" && window !== null) {
         });
       };
     })(this);
-  } else if (window.Promise) {
-    newPromise = (function(_this) {
-      return function(fn) {
-        return new window.Promise(function(resolve, reject) {
-          if (resolve.fulfill) {
-            return fn(resolve.resolve.bind(resolve), resolve.reject.bind(resolve));
-          } else {
-            return fn.apply(null, arguments);
-          }
-        });
-      };
-    })(this);
-    allPromises = (function(_this) {
-      return function(promises) {
-        return window.Promise.all(promises);
-      };
-    })(this);
-  } else {
-    if (typeof console !== "undefined" && console !== null) {
-      if (typeof console.warn === "function") {
-        console.warn('Octokat: A Promise API was not found. Supported libraries that have Promises are jQuery, angularjs, and es6-promise');
-      }
-    }
   }
-} else {
-  req = require;
-  Promise = this.Promise || req('es6-promise').Promise;
-  newPromise = function(fn) {
-    return new Promise(fn);
-  };
-  allPromises = function(promises) {
-    return Promise.all(promises);
-  };
 }
-
-toPromise = function(orig) {
-  return function() {
-    var args, last;
-    args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
-    last = args[args.length - 1];
-    if (typeof last === 'function') {
-      args.pop();
-      return orig.apply(null, [last].concat(slice.call(args)));
-    } else if (newPromise) {
-      return newPromise(function(resolve, reject) {
-        var cb;
-        cb = function(err, val) {
-          if (err) {
-            return reject(err);
-          }
-          return resolve(val);
-        };
-        return orig.apply(null, [cb].concat(slice.call(args)));
-      });
-    } else {
-      throw new Error('You must specify a callback or have a promise library loaded');
-    }
-  };
-};
 
 module.exports = {
   newPromise: newPromise,
-  allPromises: allPromises,
-  toPromise: toPromise
+  allPromises: allPromises
 };
 
 
 },{}],7:[function(require,module,exports){
+var allPromises, newPromise;
+
+if (typeof Promise !== "undefined" && Promise !== null) {
+  newPromise = (function(_this) {
+    return function(fn) {
+      return new Promise(function(resolve, reject) {
+        if (resolve.fulfill) {
+          return fn(resolve.resolve.bind(resolve), resolve.reject.bind(resolve));
+        } else {
+          return fn.apply(null, arguments);
+        }
+      });
+    };
+  })(this);
+  allPromises = (function(_this) {
+    return function(promises) {
+      return Promise.all(promises);
+    };
+  })(this);
+}
+
+module.exports = {
+  newPromise: newPromise,
+  allPromises: allPromises
+};
+
+
+},{}],8:[function(require,module,exports){
+var Promise, allPromises, newPromise, req;
+
+req = require;
+
+Promise = this.Promise || req('es6-promise').Promise;
+
+newPromise = function(fn) {
+  return new Promise(fn);
+};
+
+allPromises = function(promises) {
+  return Promise.all(promises);
+};
+
+module.exports = {
+  newPromise: newPromise,
+  allPromises: allPromises
+};
+
+
+},{}],9:[function(require,module,exports){
 var toQueryString;
 
 toQueryString = function(options, omitQuestionMark) {
@@ -542,9 +533,9 @@ toQueryString = function(options, omitQuestionMark) {
 module.exports = toQueryString;
 
 
-},{}],8:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 (function (global){
-var ALL_PLUGINS, Chainer, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, toPromise, uncamelizeObj,
+var ALL_PLUGINS, Chainer, OBJECT_MATCHER, Octokat, Request, TREE_OPTIONS, applyHypermedia, deprecate, injectVerbMethods, plus, reChainChildren, ref, uncamelizeObj,
   slice = [].slice;
 
 plus = require('./plus');
@@ -559,11 +550,9 @@ injectVerbMethods = require('./verb-methods');
 
 Request = require('./request');
 
-toPromise = require('./helpers/promise').toPromise;
-
 applyHypermedia = require('./helpers/hypermedia');
 
-ALL_PLUGINS = [require('./plugins/path-check'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/fetch-all'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), require('./plugins/hypermedia'), require('./plugins/camel-case')];
+ALL_PLUGINS = [require('./plugins/promise/library-first'), require('./plugins/path-check'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/fetch-all'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), require('./plugins/hypermedia'), require('./plugins/camel-case')];
 
 reChainChildren = function(plugins, request, url, obj) {
   var context, j, k, key, len, re, ref1;
@@ -728,18 +717,10 @@ Octokat = function(clientOptions) {
     }
     return fn;
   };
-  instance.status = toPromise(function(cb) {
-    return request('GET', 'https://status.github.com/api/status.json', null, null, cb);
-  });
-  instance.status.api = toPromise(function(cb) {
-    return request('GET', 'https://status.github.com/api.json', null, null, cb);
-  });
-  instance.status.lastMessage = toPromise(function(cb) {
-    return request('GET', 'https://status.github.com/api/last-message.json', null, null, cb);
-  });
-  instance.status.messages = toPromise(function(cb) {
-    return request('GET', 'https://status.github.com/api/messages.json', null, null, cb);
-  });
+  instance.status = instance.fromUrl('https://status.github.com/api/status.json');
+  instance.status.api = instance.fromUrl('https://status.github.com/api.json');
+  instance.status.lastMessage = instance.fromUrl('https://status.github.com/api/last-message.json');
+  instance.status.messages = instance.fromUrl('https://status.github.com/api/messages.json');
   return instance;
 };
 
@@ -747,7 +728,7 @@ module.exports = Octokat;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helpers/hypermedia":5,"./helpers/promise":6,"./plugins/authorization":9,"./plugins/cache-handler":10,"./plugins/camel-case":11,"./plugins/fetch-all":12,"./plugins/hypermedia":13,"./plugins/pagination":14,"./plugins/path-check":15,"./plugins/preview-apis":16,"./plugins/read-binary":17,"./plugins/simple-verbs":18,"./plugins/use-post-instead-of-patch":19,"./plus":20,"./request":21,"./verb-methods":22}],9:[function(require,module,exports){
+},{"./chainer":1,"./deprecate":2,"./grammar":3,"./helpers/hypermedia":5,"./plugins/authorization":11,"./plugins/cache-handler":12,"./plugins/camel-case":13,"./plugins/fetch-all":14,"./plugins/hypermedia":15,"./plugins/pagination":16,"./plugins/path-check":17,"./plugins/preview-apis":18,"./plugins/promise/library-first":19,"./plugins/read-binary":20,"./plugins/simple-verbs":21,"./plugins/use-post-instead-of-patch":22,"./plus":23,"./request":24,"./verb-methods":25}],11:[function(require,module,exports){
 var base64encode;
 
 base64encode = require('../helpers/base64');
@@ -772,7 +753,7 @@ module.exports = {
 };
 
 
-},{"../helpers/base64":4}],10:[function(require,module,exports){
+},{"../helpers/base64":4}],12:[function(require,module,exports){
 var CacheMiddleware;
 
 module.exports = new (CacheMiddleware = (function() {
@@ -836,7 +817,7 @@ module.exports = new (CacheMiddleware = (function() {
 })());
 
 
-},{}],11:[function(require,module,exports){
+},{}],13:[function(require,module,exports){
 var CamelCase, plus;
 
 plus = require('../plus');
@@ -906,7 +887,7 @@ module.exports = new (CamelCase = (function() {
 })());
 
 
-},{"../plus":20}],12:[function(require,module,exports){
+},{"../plus":23}],14:[function(require,module,exports){
 var fetchNextPage, getMore, pushAll;
 
 pushAll = function(target, source) {
@@ -964,7 +945,7 @@ module.exports = {
 };
 
 
-},{}],13:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 var HyperMedia, deprecate,
   slice = [].slice;
 
@@ -1065,7 +1046,7 @@ module.exports = new (HyperMedia = (function() {
 })());
 
 
-},{"../deprecate":2}],14:[function(require,module,exports){
+},{"../deprecate":2}],16:[function(require,module,exports){
 var Pagination;
 
 module.exports = new (Pagination = (function() {
@@ -1097,7 +1078,7 @@ module.exports = new (Pagination = (function() {
 })());
 
 
-},{}],15:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var URL_VALIDATOR;
 
 URL_VALIDATOR = require('../grammar').URL_VALIDATOR;
@@ -1114,7 +1095,7 @@ module.exports = {
 };
 
 
-},{"../grammar":3}],16:[function(require,module,exports){
+},{"../grammar":3}],18:[function(require,module,exports){
 var DEFAULT_HEADER;
 
 DEFAULT_HEADER = require('../grammar').DEFAULT_HEADER;
@@ -1135,7 +1116,38 @@ module.exports = {
 };
 
 
-},{"../grammar":3}],17:[function(require,module,exports){
+},{"../grammar":3}],19:[function(require,module,exports){
+var allPromises, newPromise, ref, ref1, ref2;
+
+ref = require('../../helpers/promise-find-library'), newPromise = ref.newPromise, allPromises = ref.allPromises;
+
+if (!(newPromise && allPromises)) {
+  ref1 = require('../../helpers/promise-find-native'), newPromise = ref1.newPromise, allPromises = ref1.allPromises;
+}
+
+if (!((typeof window !== "undefined" && window !== null) || newPromise)) {
+  ref2 = require('../../helpers/promise-node'), newPromise = ref2.newPromise, allPromises = ref2.allPromises;
+}
+
+if ((typeof window !== "undefined" && window !== null) && !newPromise) {
+  if (typeof console !== "undefined" && console !== null) {
+    if (typeof console.warn === "function") {
+      console.warn('Octokat: A Promise API was not found. Supported libraries that have Promises are jQuery, angularjs, and es6-promise');
+    }
+  }
+} else if ((typeof window === "undefined" || window === null) && !newPromise) {
+  throw new Error('Could not find a promise lib for node. Seems like a bug');
+}
+
+module.exports = {
+  promiseCreator: {
+    newPromise: newPromise,
+    allPromises: allPromises
+  }
+};
+
+
+},{"../../helpers/promise-find-library":6,"../../helpers/promise-find-native":7,"../../helpers/promise-node":8}],20:[function(require,module,exports){
 var ReadBinary, toQueryString;
 
 toQueryString = require('../helpers/querystring');
@@ -1190,7 +1202,7 @@ module.exports = new (ReadBinary = (function() {
 })());
 
 
-},{"../helpers/querystring":7}],18:[function(require,module,exports){
+},{"../helpers/querystring":9}],21:[function(require,module,exports){
 var toQueryString,
   slice = [].slice;
 
@@ -1274,7 +1286,7 @@ module.exports = {
 };
 
 
-},{"../helpers/querystring":7}],19:[function(require,module,exports){
+},{"../helpers/querystring":9}],22:[function(require,module,exports){
 module.exports = {
   requestMiddleware: function(arg) {
     var method, ref, usePostInsteadOfPatch;
@@ -1288,7 +1300,7 @@ module.exports = {
 };
 
 
-},{}],20:[function(require,module,exports){
+},{}],23:[function(require,module,exports){
 var plus;
 
 plus = {
@@ -1342,7 +1354,7 @@ plus = {
 module.exports = plus;
 
 
-},{}],21:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var DEFAULT_CACHE_HANDLER, Request, _cachedETags, ajax, plus, userAgent;
 
 plus = require('./plus');
@@ -1569,54 +1581,84 @@ Request = function(instance, clientOptions, ALL_PLUGINS) {
 module.exports = Request;
 
 
-},{"./plus":20}],22:[function(require,module,exports){
+},{"./plus":23}],25:[function(require,module,exports){
 var injectVerbMethods, toPromise, toQueryString,
   slice = [].slice;
 
-toPromise = require('./helpers/promise').toPromise;
-
 toQueryString = require('./helpers/querystring');
 
+toPromise = function(orig, newPromise) {
+  return function() {
+    var args, last;
+    args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
+    last = args[args.length - 1];
+    if (typeof last === 'function') {
+      args.pop();
+      return orig.apply(null, [last].concat(slice.call(args)));
+    } else if (newPromise) {
+      return newPromise(function(resolve, reject) {
+        var cb;
+        cb = function(err, val) {
+          if (err) {
+            return reject(err);
+          }
+          return resolve(val);
+        };
+        return orig.apply(null, [cb].concat(slice.call(args)));
+      });
+    } else {
+      throw new Error('You must specify a callback or have a promise library loaded');
+    }
+  };
+};
+
 injectVerbMethods = function(plugins, request, path, obj) {
-  var fn, i, len, plugin, ref, results, verbFunc, verbName;
+  var allPromises, fn, i, j, len, len1, newPromise, plugin, ref, ref1, results, verbFunc, verbName;
   if (!request) {
     throw new Error('Octokat BUG: request is required');
   }
-  results = [];
   for (i = 0, len = plugins.length; i < len; i++) {
     plugin = plugins[i];
-    ref = plugin.verbs || {};
+    if (plugin.promiseCreator) {
+      ref = plugin.promiseCreator, newPromise = ref.newPromise, allPromises = ref.allPromises;
+      break;
+    }
+  }
+  results = [];
+  for (j = 0, len1 = plugins.length; j < len1; j++) {
+    plugin = plugins[j];
+    ref1 = plugin.verbs || {};
     fn = function(verbName, verbFunc) {
       obj.url = path;
       return obj[verbName] = function() {
         var args, makeRequest;
         args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
         makeRequest = function() {
-          var cb, data, method, options, originalArgs, ref1;
+          var cb, data, method, options, originalArgs, ref2;
           cb = arguments[0], originalArgs = 2 <= arguments.length ? slice.call(arguments, 1) : [];
-          ref1 = verbFunc.apply(null, [path].concat(slice.call(originalArgs))), method = ref1.method, path = ref1.path, data = ref1.data, options = ref1.options;
+          ref2 = verbFunc.apply(null, [path].concat(slice.call(originalArgs))), method = ref2.method, path = ref2.path, data = ref2.data, options = ref2.options;
           return request(method, path, data, options, cb);
         };
-        return toPromise(makeRequest).apply(null, args);
+        return toPromise(makeRequest, newPromise).apply(null, args);
       };
     };
-    for (verbName in ref) {
-      verbFunc = ref[verbName];
+    for (verbName in ref1) {
+      verbFunc = ref1[verbName];
       fn(verbName, verbFunc);
     }
     results.push((function() {
-      var ref1, results1;
-      ref1 = plugin.asyncVerbs || {};
+      var ref2, results1;
+      ref2 = plugin.asyncVerbs || {};
       results1 = [];
-      for (verbName in ref1) {
-        verbFunc = ref1[verbName];
+      for (verbName in ref2) {
+        verbFunc = ref2[verbName];
         results1.push((function(verbName, verbFunc) {
           obj.url = path;
           return obj[verbName] = function() {
             var args, makeRequest;
             args = 1 <= arguments.length ? slice.call(arguments, 0) : [];
             makeRequest = verbFunc(request, path);
-            return toPromise(makeRequest).apply(null, args);
+            return toPromise(makeRequest, newPromise).apply(null, args);
           };
         })(verbName, verbFunc));
       }
@@ -1629,5 +1671,5 @@ injectVerbMethods = function(plugins, request, path, obj) {
 module.exports = injectVerbMethods;
 
 
-},{"./helpers/promise":6,"./helpers/querystring":7}]},{},[8])(8)
+},{"./helpers/querystring":9}]},{},[10])(10)
 });
