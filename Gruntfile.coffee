@@ -146,7 +146,7 @@ module.exports = (grunt) ->
           'dist/node/base.js'           : 'src/base.coffee'
           'dist/node/octokat.js'        : 'src/octokat.coffee'
           'dist/node/plus.js'           : 'src/plus.coffee'
-          'dist/node/request.js'        : 'src/request.coffee'
+          'dist/node/requester.js'      : 'src/requester.coffee'
           'dist/node/verb-methods.js'   : 'src/verb-methods.coffee'
 
 
