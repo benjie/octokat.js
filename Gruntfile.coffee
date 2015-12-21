@@ -129,7 +129,7 @@ module.exports = (grunt) ->
           'dist/node/plugins/promise/native-first.js'  : 'src/plugins/promise/native-first.coffee'
           'dist/node/plugins/promise/native-only.js'  : 'src/plugins/promise/native-only.coffee'
 
-          'dist/node/plugins/path-check.js'  : 'src/plugins/path-check.coffee'
+          'dist/node/plugins/path-validator.js'  : 'src/plugins/path-validator.coffee'
           'dist/node/plugins/preview-apis.js'  : 'src/plugins/preview-apis.coffee'
           'dist/node/plugins/use-post-instead-of-patch.js'  : 'src/plugins/use-post-instead-of-patch.coffee'
           'dist/node/plugins/authorization.js'  : 'src/plugins/authorization.coffee'

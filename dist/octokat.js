@@ -2808,7 +2808,7 @@ OctokatBase = require('./base');
 
 HypermediaPlugin = require('./plugins/hypermedia');
 
-ALL_PLUGINS = [require('./plugins/promise/library-first'), require('./plugins/path-check'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/fetch-all'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), HypermediaPlugin, require('./plugins/camel-case')];
+ALL_PLUGINS = [require('./plugins/promise/library-first'), require('./plugins/path-validator'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/fetch-all'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), HypermediaPlugin, require('./plugins/camel-case')];
 
 Octokat = function(clientOptions) {
   var instance;
@@ -2831,13 +2831,15 @@ Octokat = function(clientOptions) {
 module.exports = Octokat;
 
 
-},{"./base":62,"./deprecate":64,"./plugins/authorization":76,"./plugins/cache-handler":77,"./plugins/camel-case":78,"./plugins/fetch-all":79,"./plugins/hypermedia":80,"./plugins/pagination":81,"./plugins/path-check":82,"./plugins/preview-apis":83,"./plugins/promise/library-first":84,"./plugins/read-binary":85,"./plugins/simple-verbs":86,"./plugins/use-post-instead-of-patch":87}],76:[function(require,module,exports){
-var base64encode;
+},{"./base":62,"./deprecate":64,"./plugins/authorization":76,"./plugins/cache-handler":77,"./plugins/camel-case":78,"./plugins/fetch-all":79,"./plugins/hypermedia":80,"./plugins/pagination":81,"./plugins/path-validator":82,"./plugins/preview-apis":83,"./plugins/promise/library-first":84,"./plugins/read-binary":85,"./plugins/simple-verbs":86,"./plugins/use-post-instead-of-patch":87}],76:[function(require,module,exports){
+var Authorization, base64encode;
 
 base64encode = require('../helpers/base64');
 
-module.exports = {
-  requestMiddleware: function(arg) {
+module.exports = new (Authorization = (function() {
+  function Authorization() {}
+
+  Authorization.prototype.requestMiddleware = function(arg) {
     var auth, password, ref, token, username;
     ref = arg.clientOptions, token = ref.token, username = ref.username, password = ref.password;
     if (token || (username && password)) {
@@ -2852,23 +2854,26 @@ module.exports = {
         }
       };
     }
-  }
-};
+  };
+
+  return Authorization;
+
+})());
 
 
 },{"../helpers/base64":69}],77:[function(require,module,exports){
-var CacheMiddleware;
+var CacheHandler;
 
-module.exports = new (CacheMiddleware = (function() {
-  function CacheMiddleware() {
+module.exports = new (CacheHandler = (function() {
+  function CacheHandler() {
     this._cachedETags = {};
   }
 
-  CacheMiddleware.prototype.get = function(method, path) {
+  CacheHandler.prototype.get = function(method, path) {
     return this._cachedETags[method + " " + path];
   };
 
-  CacheMiddleware.prototype.add = function(method, path, eTag, data, status) {
+  CacheHandler.prototype.add = function(method, path, eTag, data, status) {
     return this._cachedETags[method + " " + path] = {
       eTag: eTag,
       data: data,
@@ -2876,7 +2881,7 @@ module.exports = new (CacheMiddleware = (function() {
     };
   };
 
-  CacheMiddleware.prototype.requestMiddleware = function(arg) {
+  CacheHandler.prototype.requestMiddleware = function(arg) {
     var cacheHandler, clientOptions, headers, method, path;
     clientOptions = arg.clientOptions, method = arg.method, path = arg.path;
     headers = {};
@@ -2891,7 +2896,7 @@ module.exports = new (CacheMiddleware = (function() {
     };
   };
 
-  CacheMiddleware.prototype.responseMiddleware = function(arg) {
+  CacheHandler.prototype.responseMiddleware = function(arg) {
     var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref, request, status;
     clientOptions = arg.clientOptions, request = arg.request, status = arg.status, jqXHR = arg.jqXHR, data = arg.data;
     if (!jqXHR) {
@@ -2915,7 +2920,7 @@ module.exports = new (CacheMiddleware = (function() {
     }
   };
 
-  return CacheMiddleware;
+  return CacheHandler;
 
 })());
 
@@ -2991,7 +2996,7 @@ module.exports = new (CamelCase = (function() {
 
 
 },{"../plus":88}],79:[function(require,module,exports){
-var fetchNextPage, getMore, pushAll;
+var FetchAll, fetchNextPage, getMore, pushAll;
 
 pushAll = function(target, source) {
   return target.push.apply(target, source);
@@ -3029,8 +3034,10 @@ fetchNextPage = function(obj, requester, cb) {
   }
 };
 
-module.exports = {
-  asyncVerbs: {
+module.exports = new (FetchAll = (function() {
+  function FetchAll() {}
+
+  FetchAll.prototype.asyncVerbs = {
     fetchAll: function(requester, path) {
       return function(cb, query) {
         return requester.request('GET', path, query, null, function(err, items) {
@@ -3044,8 +3051,11 @@ module.exports = {
         });
       };
     }
-  }
-};
+  };
+
+  return FetchAll;
+
+})());
 
 
 },{}],80:[function(require,module,exports){
@@ -3182,24 +3192,29 @@ module.exports = new (Pagination = (function() {
 
 
 },{}],82:[function(require,module,exports){
-var URL_VALIDATOR;
+var PathValidator, URL_VALIDATOR;
 
 URL_VALIDATOR = require('../grammar/url-validator');
 
-module.exports = {
-  requestMiddleware: function(arg) {
+module.exports = new (PathValidator = (function() {
+  function PathValidator() {}
+
+  PathValidator.prototype.requestMiddleware = function(arg) {
     var err, path;
     path = arg.path;
     if (!URL_VALIDATOR.test(path)) {
       err = "Octokat BUG: Invalid Path. If this is actually a valid path then please update the URL_VALIDATOR. path=" + path;
       return console.warn(err);
     }
-  }
-};
+  };
+
+  return PathValidator;
+
+})());
 
 
 },{"../grammar/url-validator":68}],83:[function(require,module,exports){
-var DEFAULT_HEADER, PREVIEW_HEADERS;
+var DEFAULT_HEADER, PREVIEW_HEADERS, PreviewApis;
 
 PREVIEW_HEADERS = require('../grammar/preview-headers');
 
@@ -3213,8 +3228,10 @@ DEFAULT_HEADER = function(url) {
   }
 };
 
-module.exports = {
-  requestMiddleware: function(arg) {
+module.exports = new (PreviewApis = (function() {
+  function PreviewApis() {}
+
+  PreviewApis.prototype.requestMiddleware = function(arg) {
     var acceptHeader, path;
     path = arg.path;
     acceptHeader = DEFAULT_HEADER(path);
@@ -3225,12 +3242,15 @@ module.exports = {
         }
       };
     }
-  }
-};
+  };
+
+  return PreviewApis;
+
+})());
 
 
 },{"../grammar/preview-headers":66}],84:[function(require,module,exports){
-var allPromises, newPromise, ref, ref1, ref2;
+var PreferLibraryOverNativePromises, allPromises, newPromise, ref, ref1, ref2;
 
 ref = require('../../helpers/promise-find-library'), newPromise = ref.newPromise, allPromises = ref.allPromises;
 
@@ -3252,12 +3272,17 @@ if ((typeof window !== "undefined" && window !== null) && !newPromise) {
   throw new Error('Could not find a promise lib for node. Seems like a bug');
 }
 
-module.exports = {
-  promiseCreator: {
+module.exports = new (PreferLibraryOverNativePromises = (function() {
+  function PreferLibraryOverNativePromises() {}
+
+  PreferLibraryOverNativePromises.prototype.promiseCreator = {
     newPromise: newPromise,
     allPromises: allPromises
-  }
-};
+  };
+
+  return PreferLibraryOverNativePromises;
+
+})());
 
 
 },{"../../helpers/promise-find-library":71,"../../helpers/promise-find-native":72,"../../helpers/promise-node":73}],85:[function(require,module,exports){
@@ -3316,13 +3341,15 @@ module.exports = new (ReadBinary = (function() {
 
 
 },{"../helpers/querystring":74}],86:[function(require,module,exports){
-var toQueryString,
+var SimpleVerbs, toQueryString,
   slice = [].slice;
 
 toQueryString = require('../helpers/querystring');
 
-module.exports = {
-  verbs: {
+module.exports = new (SimpleVerbs = (function() {
+  function SimpleVerbs() {}
+
+  SimpleVerbs.prototype.verbs = {
     fetch: function(path, query) {
       return {
         method: 'GET',
@@ -3395,13 +3422,20 @@ module.exports = {
         }
       };
     }
-  }
-};
+  };
+
+  return SimpleVerbs;
+
+})());
 
 
 },{"../helpers/querystring":74}],87:[function(require,module,exports){
-module.exports = {
-  requestMiddleware: function(arg) {
+var UsePostInsteadOfPatch;
+
+module.exports = new (UsePostInsteadOfPatch = (function() {
+  function UsePostInsteadOfPatch() {}
+
+  UsePostInsteadOfPatch.prototype.requestMiddleware = function(arg) {
     var method, ref, usePostInsteadOfPatch;
     (ref = arg.clientOptions, usePostInsteadOfPatch = ref.usePostInsteadOfPatch), method = arg.method;
     if (usePostInsteadOfPatch && method === 'PATCH') {
@@ -3409,8 +3443,11 @@ module.exports = {
         method: 'POST'
       };
     }
-  }
-};
+  };
+
+  return UsePostInsteadOfPatch;
+
+})());
 
 
 },{}],88:[function(require,module,exports){
