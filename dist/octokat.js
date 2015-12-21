@@ -3468,7 +3468,7 @@ module.exports = plus;
 
 
 },{}],89:[function(require,module,exports){
-var DEFAULT_CACHE_HANDLER, Requester, _cachedETags, ajax, filter, forEach, plus, userAgent;
+var Requester, ajax, filter, forEach, plus, userAgent;
 
 filter = require('lodash/collection/filter');
 
@@ -3518,17 +3518,6 @@ ajax = function(options, cb) {
     }
   };
   return xhr.send(options.data);
-};
-
-_cachedETags = {};
-
-DEFAULT_CACHE_HANDLER = {
-  get: function(method, path) {
-    return _cachedETags[method + " " + path];
-  },
-  add: function(method, path, eTag, data, status) {
-    return _cachedETags[method + " " + path] = new ETagResponse(eTag, data, status);
-  }
 };
 
 module.exports = Requester = (function() {
@@ -3606,9 +3595,6 @@ module.exports = Requester = (function() {
     method = acc.method, headers = acc.headers, mimeType = acc.mimeType;
     if (options.isRaw) {
       headers['Accept'] = 'application/vnd.github.raw';
-    }
-    if (cacheHandler.get(method, path)) {
-      headers['If-None-Match'] = cacheHandler.get(method, path).eTag;
     }
     ajaxConfig = {
       url: path,
@@ -3742,7 +3728,7 @@ toPromise = function(orig, newPromise) {
   };
 };
 
-VerbMethods = (function() {
+module.exports = VerbMethods = (function() {
   function VerbMethods(plugins, _requester) {
     var i, j, len, len1, plugin, promisePlugins, ref, ref1;
     this._requester = _requester;
@@ -3815,8 +3801,6 @@ VerbMethods = (function() {
   return VerbMethods;
 
 })();
-
-module.exports = VerbMethods;
 
 
 },{"./helpers/querystring":74,"lodash/collection/filter":2,"lodash/object/extend":55,"lodash/object/forOwn":56}]},{},[75])(75)
