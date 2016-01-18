@@ -1491,8 +1491,6 @@ plus = {
       return results;
     }
   },
-  filter: filter,
-  forEach: forEach,
   forOwn: function(obj, iterator) {
     var i, key, len, ref, results;
     ref = Object.keys(obj);
@@ -1502,7 +1500,9 @@ plus = {
       results.push(iterator(obj[key], key));
     }
     return results;
-  }
+  },
+  filter: filter,
+  forEach: forEach
 };
 
 module.exports = plus;
@@ -1706,10 +1706,8 @@ module.exports = Requester = (function() {
           if (options.isBoolean && jqXHR.status === 404) {
 
           } else {
-            err = {
-              text: jqXHR.responseText,
-              status: jqXHR.status
-            };
+            err = new Error(jqXHR.responseText);
+            err.status = jqXHR.status;
             if (jqXHR.getResponseHeader('Content-Type') === 'application/json; charset=utf-8') {
               if (jqXHR.responseText) {
                 json = JSON.parse(jqXHR.responseText);
