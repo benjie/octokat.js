@@ -984,7 +984,9 @@ module.exports = new (CamelCase = (function() {
 
 
 },{"../plus":29}],20:[function(require,module,exports){
-var FetchAll, fetchNextPage, getMore, pushAll;
+var FetchAll, fetchNextPage, getMore, pushAll, toQueryString;
+
+toQueryString = require('../helpers/querystring');
 
 pushAll = function(target, source) {
   return target.push.apply(target, source);
@@ -1028,7 +1030,7 @@ module.exports = new (FetchAll = (function() {
   FetchAll.prototype.asyncVerbs = {
     fetchAll: function(requester, path) {
       return function(cb, query) {
-        return requester.request('GET', path, query, null, function(err, items) {
+        return requester.request('GET', "" + path + (toQueryString(query)), null, null, function(err, items) {
           var acc;
           if (err) {
             return cb(err);
@@ -1046,7 +1048,7 @@ module.exports = new (FetchAll = (function() {
 })());
 
 
-},{}],21:[function(require,module,exports){
+},{"../helpers/querystring":15}],21:[function(require,module,exports){
 var HyperMedia, deprecate,
   slice = [].slice;
 
