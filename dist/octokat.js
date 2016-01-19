@@ -1509,7 +1509,7 @@ module.exports = plus;
 
 
 },{"lodash/internal/arrayEach":1,"lodash/internal/arrayFilter":2}],30:[function(require,module,exports){
-var Requester, ajax, extend, filter, forEach, ref, userAgent;
+var Requester, ajax, eventId, extend, filter, forEach, ref, userAgent;
 
 ref = require('./plus'), filter = ref.filter, forEach = ref.forEach, extend = ref.extend;
 
@@ -1557,6 +1557,8 @@ ajax = function(options, cb) {
   return xhr.send(options.data);
 };
 
+eventId = 0;
+
 module.exports = Requester = (function() {
   function Requester(_instance, _clientOptions, plugins) {
     var base, base1, base2;
@@ -1571,7 +1573,9 @@ module.exports = Requester = (function() {
     if ((base2 = this._clientOptions).usePostInsteadOfPatch == null) {
       base2.usePostInsteadOfPatch = false;
     }
-    this._emitter = this._clientOptions.emitter;
+    if (typeof this._clientOptions.emitter === 'function') {
+      this._emit = this._clientOptions.emitter;
+    }
     this._pluginMiddleware = filter(plugins, function(arg) {
       var requestMiddleware;
       requestMiddleware = arg.requestMiddleware;
@@ -1580,7 +1584,7 @@ module.exports = Requester = (function() {
   }
 
   Requester.prototype.request = function(method, path, data, options, cb) {
-    var acc, ajaxConfig, headers, mimeType, ref1;
+    var acc, ajaxConfig, headers, mimeType;
     if (options == null) {
       options = {
         isRaw: false,
@@ -1657,28 +1661,37 @@ module.exports = Requester = (function() {
         })(this)
       };
     }
-    if ((ref1 = this._emitter) != null) {
-      ref1.emit('start', method, path, data, options);
+    eventId++;
+    if (typeof this._emit === "function") {
+      this._emit('start', eventId, {
+        method: method,
+        path: path,
+        data: data,
+        options: options
+      });
     }
     return ajax(ajaxConfig, (function(_this) {
       return function(err, val) {
         var emitterRate, jqXHR, json, rateLimit, rateLimitRemaining, rateLimitReset;
         jqXHR = err || val;
-        if (_this._emitter) {
+        if (_this._emit) {
           rateLimit = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Limit'));
           rateLimitRemaining = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Remaining'));
           rateLimitReset = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Reset'));
           emitterRate = {
-            rate: {
-              remaining: rateLimitRemaining,
-              limit: rateLimit,
-              reset: rateLimitReset
-            }
+            remaining: rateLimitRemaining,
+            limit: rateLimit,
+            reset: rateLimitReset
           };
           if (jqXHR.getResponseHeader('X-OAuth-Scopes')) {
             emitterRate.scopes = jqXHR.getResponseHeader('X-OAuth-Scopes').split(', ');
           }
-          _this._emitter.emit('request', emitterRate, method, path, data, options, jqXHR.status);
+          _this._emit('end', eventId, {
+            method: method,
+            path: path,
+            data: data,
+            options: options
+          }, jqXHR.status, emitterRate);
         }
         if (!err) {
           if (jqXHR.status === 302) {
