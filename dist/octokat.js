@@ -1681,16 +1681,18 @@ module.exports = Requester = (function() {
         var emitterRate, jqXHR, json, rateLimit, rateLimitRemaining, rateLimitReset;
         jqXHR = err || val;
         if (_this._emit) {
-          rateLimit = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Limit'));
-          rateLimitRemaining = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Remaining'));
-          rateLimitReset = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Reset'));
-          emitterRate = {
-            remaining: rateLimitRemaining,
-            limit: rateLimit,
-            reset: rateLimitReset
-          };
-          if (jqXHR.getResponseHeader('X-OAuth-Scopes')) {
-            emitterRate.scopes = jqXHR.getResponseHeader('X-OAuth-Scopes').split(', ');
+          if (jqXHR.getResponseHeader('X-RateLimit-Limit')) {
+            rateLimit = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Limit'));
+            rateLimitRemaining = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Remaining'));
+            rateLimitReset = parseFloat(jqXHR.getResponseHeader('X-RateLimit-Reset'));
+            emitterRate = {
+              remaining: rateLimitRemaining,
+              limit: rateLimit,
+              reset: rateLimitReset
+            };
+            if (jqXHR.getResponseHeader('X-OAuth-Scopes')) {
+              emitterRate.scopes = jqXHR.getResponseHeader('X-OAuth-Scopes').split(', ');
+            }
           }
           _this._emit('end', eventId, {
             method: method,
