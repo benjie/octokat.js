@@ -177,7 +177,7 @@ OctokatBase = function(clientOptions) {
       chainer.chain(url, true, {}, data);
       chainer.chainChildren(url, data);
     } else {
-      chainer.chain('', null, TREE_OPTIONS, data);
+      chainer.chain('', null, {}, data);
       if (Array.isArray(data)) {
         for (k = 0, len1 = data.length; k < len1; k++) {
           datum = data[k];
@@ -323,7 +323,7 @@ module.exports = function(message) {
 module.exports = {
   'repos': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+$/,
   'gists': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/gists\/[^\/]+$/,
-  'issues': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+\/(issues|pulls)[^\/]+$/,
+  'issues': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+\/(issues|pulls)\/[^\/]+$/,
   'users': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/users\/[^\/]+$/,
   'orgs': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/orgs\/[^\/]+$/,
   'repos.comments': /^(https?:\/\/[^\/]+)?(\/api\/v3)?\/repos\/[^\/]+\/[^\/]+\/comments\/[^\/]+$/
@@ -1515,13 +1515,9 @@ module.exports = plus;
 
 
 },{"lodash/internal/arrayEach":1,"lodash/internal/arrayFilter":2}],30:[function(require,module,exports){
-var Requester, ajax, eventId, extend, filter, forEach, ref, userAgent;
+var Requester, ajax, eventId, extend, filter, forEach, ref;
 
 ref = require('./plus'), filter = ref.filter, forEach = ref.forEach, extend = ref.extend;
-
-if (typeof window === "undefined" || window === null) {
-  userAgent = 'octokat.js';
-}
 
 ajax = function(options, cb) {
   var XMLHttpRequest, name, ref1, req, value, xhr;
@@ -1618,9 +1614,11 @@ module.exports = Requester = (function() {
       path = "" + this._clientOptions.rootURL + path;
     }
     headers = {
-      'Accept': this._clientOptions.acceptHeader,
-      'User-Agent': userAgent || void 0
+      'Accept': this._clientOptions.acceptHeader || 'application/json'
     };
+    if (typeof window === "undefined" || window === null) {
+      headers['User-Agent'] = 'octokat.js';
+    }
     acc = {
       method: method,
       path: path,
