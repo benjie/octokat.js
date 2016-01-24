@@ -935,6 +935,8 @@ module.exports = new (CamelCase = (function() {
       return this._replaceArray(data);
     } else if (typeof data === 'function') {
       return data;
+    } else if (data instanceof Date) {
+      return data;
     } else if (data === Object(data)) {
       return this._replaceObject(data);
     } else {
@@ -1061,6 +1063,8 @@ module.exports = new (HyperMedia = (function() {
     if (Array.isArray(data)) {
       return this._replaceArray(instance, data);
     } else if (typeof data === 'function') {
+      return data;
+    } else if (data instanceof Date) {
       return data;
     } else if (data === Object(data)) {
       return this._replaceObject(instance, data);
