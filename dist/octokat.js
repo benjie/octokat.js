@@ -51,7 +51,7 @@ module.exports = arrayFilter;
 
 },{}],3:[function(require,module,exports){
 (function (global){
-var Chainer, OctokatBase, Requester, TREE_OPTIONS, VerbMethods, applyHypermedia, deprecate, plus, uncamelizeObj,
+var Chainer, NativePromiseOnlyPlugin, OctokatBase, Requester, SimpleVerbsPlugin, TREE_OPTIONS, VerbMethods, applyHypermedia, deprecate, plus, uncamelizeObj,
   slice = [].slice;
 
 plus = require('./plus');
@@ -63,6 +63,10 @@ TREE_OPTIONS = require('./grammar/tree-options');
 Chainer = require('./chainer');
 
 VerbMethods = require('./verb-methods');
+
+SimpleVerbsPlugin = require('./plugins/simple-verbs');
+
+NativePromiseOnlyPlugin = require('./plugins/promise/native-only');
 
 Requester = require('./requester');
 
@@ -99,7 +103,7 @@ OctokatBase = function(clientOptions) {
   if (clientOptions == null) {
     clientOptions = {};
   }
-  plugins = clientOptions.plugins || [];
+  plugins = clientOptions.plugins || [SimpleVerbsPlugin, NativePromiseOnlyPlugin];
   disableHypermedia = clientOptions.disableHypermedia;
   if (disableHypermedia == null) {
     disableHypermedia = false;
@@ -129,6 +133,7 @@ OctokatBase = function(clientOptions) {
       if (!disableHypermedia) {
         context = {
           data: val,
+          plugins: plugins,
           requester: requester,
           instance: instance,
           clientOptions: clientOptions
@@ -151,6 +156,7 @@ OctokatBase = function(clientOptions) {
       requester: {
         request: request
       },
+      plugins: plugins,
       data: data,
       instance: instance,
       clientOptions: clientOptions
@@ -158,9 +164,12 @@ OctokatBase = function(clientOptions) {
     return instance._parseWithContext('', context);
   };
   instance._parseWithContext = function(path, context) {
-    var chainer, data, datum, j, k, len, len1, plugin, requester, url;
+    var data, j, len, plugin, requester, url;
     data = context.data, requester = context.requester;
     url = data.url || path;
+    plus.extend(context, {
+      url: url
+    });
     for (j = 0, len = plugins.length; j < len; j++) {
       plugin = plugins[j];
       if (plugin.responseMiddleware) {
@@ -168,20 +177,6 @@ OctokatBase = function(clientOptions) {
       }
     }
     data = context.data;
-    verbMethods = new VerbMethods(plugins, requester);
-    chainer = new Chainer(verbMethods);
-    if (url) {
-      chainer.chain(url, true, {}, data);
-      chainer.chainChildren(url, data);
-    } else {
-      chainer.chain('', null, {}, data);
-      if (Array.isArray(data)) {
-        for (k = 0, len1 = data.length; k < len1; k++) {
-          datum = data[k];
-          chainer.chainChildren(datum.url, datum);
-        }
-      }
-    }
     return data;
   };
   instance._fromUrlWithDefault = function() {
@@ -229,17 +224,11 @@ module.exports = OctokatBase;
 
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./chainer":4,"./deprecate":5,"./grammar/tree-options":8,"./helpers/hypermedia":11,"./plus":29,"./requester":30,"./verb-methods":31}],4:[function(require,module,exports){
-var Chainer, OBJECT_MATCHER, TREE_OPTIONS, VerbMethods, plus,
+},{"./chainer":4,"./deprecate":5,"./grammar/tree-options":8,"./helpers/hypermedia":11,"./plugins/promise/native-only":27,"./plugins/simple-verbs":29,"./plus":31,"./requester":32,"./verb-methods":33}],4:[function(require,module,exports){
+var Chainer, plus,
   slice = [].slice;
 
-TREE_OPTIONS = require('./grammar/tree-options');
-
-OBJECT_MATCHER = require('./grammar/object-matcher');
-
 plus = require('./plus');
-
-VerbMethods = require('./verb-methods');
 
 module.exports = Chainer = (function() {
   function Chainer(_verbMethods) {
@@ -286,23 +275,6 @@ module.exports = Chainer = (function() {
     return fn;
   };
 
-  Chainer.prototype.chainChildren = function(url, obj) {
-    var context, i, k, key, len, re, ref;
-    for (key in OBJECT_MATCHER) {
-      re = OBJECT_MATCHER[key];
-      if (re.test(obj.url)) {
-        context = TREE_OPTIONS;
-        ref = key.split('.');
-        for (i = 0, len = ref.length; i < len; i++) {
-          k = ref[i];
-          context = context[k];
-        }
-        this.chain(url, k, context, obj);
-      }
-    }
-    return obj;
-  };
-
   return Chainer;
 
 })();
@@ -310,7 +282,7 @@ module.exports = Chainer = (function() {
 module.exports = Chainer;
 
 
-},{"./grammar/object-matcher":6,"./grammar/tree-options":8,"./plus":29,"./verb-methods":31}],5:[function(require,module,exports){
+},{"./plus":31}],5:[function(require,module,exports){
 module.exports = function(message) {
   return typeof console !== "undefined" && console !== null ? typeof console.warn === "function" ? console.warn("Octokat Deprecation: " + message) : void 0 : void 0;
 };
@@ -792,7 +764,7 @@ OctokatBase = require('./base');
 
 HypermediaPlugin = require('./plugins/hypermedia');
 
-ALL_PLUGINS = [require('./plugins/promise/library-first'), require('./plugins/path-validator'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/fetch-all'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), HypermediaPlugin, require('./plugins/camel-case')];
+ALL_PLUGINS = [require('./plugins/object-chainer'), require('./plugins/promise/library-first'), require('./plugins/path-validator'), require('./plugins/authorization'), require('./plugins/preview-apis'), require('./plugins/use-post-instead-of-patch'), require('./plugins/simple-verbs'), require('./plugins/fetch-all'), require('./plugins/read-binary'), require('./plugins/pagination'), require('./plugins/cache-handler'), HypermediaPlugin, require('./plugins/camel-case')];
 
 Octokat = function(clientOptions) {
   var instance;
@@ -815,7 +787,7 @@ Octokat = function(clientOptions) {
 module.exports = Octokat;
 
 
-},{"./base":3,"./deprecate":5,"./plugins/authorization":17,"./plugins/cache-handler":18,"./plugins/camel-case":19,"./plugins/fetch-all":20,"./plugins/hypermedia":21,"./plugins/pagination":22,"./plugins/path-validator":23,"./plugins/preview-apis":24,"./plugins/promise/library-first":25,"./plugins/read-binary":26,"./plugins/simple-verbs":27,"./plugins/use-post-instead-of-patch":28}],17:[function(require,module,exports){
+},{"./base":3,"./deprecate":5,"./plugins/authorization":17,"./plugins/cache-handler":18,"./plugins/camel-case":19,"./plugins/fetch-all":20,"./plugins/hypermedia":21,"./plugins/object-chainer":22,"./plugins/pagination":23,"./plugins/path-validator":24,"./plugins/preview-apis":25,"./plugins/promise/library-first":26,"./plugins/read-binary":28,"./plugins/simple-verbs":29,"./plugins/use-post-instead-of-patch":30}],17:[function(require,module,exports){
 var Authorization, base64encode;
 
 base64encode = require('../helpers/base64');
@@ -981,7 +953,7 @@ module.exports = new (CamelCase = (function() {
 })());
 
 
-},{"../plus":29}],20:[function(require,module,exports){
+},{"../plus":31}],20:[function(require,module,exports){
 var FetchAll, fetchNextPage, getMore, pushAll, toQueryString;
 
 toQueryString = require('../helpers/querystring');
@@ -1150,6 +1122,67 @@ module.exports = new (HyperMedia = (function() {
 
 
 },{"../deprecate":5}],22:[function(require,module,exports){
+var Chainer, OBJECT_MATCHER, ObjectChainer, TREE_OPTIONS, VerbMethods;
+
+OBJECT_MATCHER = require('../grammar/object-matcher');
+
+TREE_OPTIONS = require('../grammar/tree-options');
+
+VerbMethods = require('../verb-methods');
+
+Chainer = require('../chainer');
+
+module.exports = new (ObjectChainer = (function() {
+  function ObjectChainer() {}
+
+  ObjectChainer.prototype.chainChildren = function(chainer, url, obj) {
+    var context, i, k, key, len, re, ref, results;
+    results = [];
+    for (key in OBJECT_MATCHER) {
+      re = OBJECT_MATCHER[key];
+      if (re.test(obj.url)) {
+        context = TREE_OPTIONS;
+        ref = key.split('.');
+        for (i = 0, len = ref.length; i < len; i++) {
+          k = ref[i];
+          context = context[k];
+        }
+        results.push(chainer.chain(url, k, context, obj));
+      } else {
+        results.push(void 0);
+      }
+    }
+    return results;
+  };
+
+  ObjectChainer.prototype.responseMiddleware = function(arg) {
+    var chainer, data, datum, i, len, plugins, requester, url, verbMethods;
+    plugins = arg.plugins, requester = arg.requester, data = arg.data, url = arg.url;
+    verbMethods = new VerbMethods(plugins, requester);
+    chainer = new Chainer(verbMethods);
+    if (url) {
+      chainer.chain(url, true, {}, data);
+      this.chainChildren(chainer, url, data);
+    } else {
+      chainer.chain('', null, {}, data);
+      if (Array.isArray(data)) {
+        for (i = 0, len = data.length; i < len; i++) {
+          datum = data[i];
+          this.chainChildren(chainer, datum.url, datum);
+        }
+      }
+    }
+    return {
+      data: data
+    };
+  };
+
+  return ObjectChainer;
+
+})());
+
+
+},{"../chainer":4,"../grammar/object-matcher":6,"../grammar/tree-options":8,"../verb-methods":33}],23:[function(require,module,exports){
 var Pagination;
 
 module.exports = new (Pagination = (function() {
@@ -1181,7 +1214,7 @@ module.exports = new (Pagination = (function() {
 })());
 
 
-},{}],23:[function(require,module,exports){
+},{}],24:[function(require,module,exports){
 var PathValidator, URL_VALIDATOR;
 
 URL_VALIDATOR = require('../grammar/url-validator');
@@ -1203,7 +1236,7 @@ module.exports = new (PathValidator = (function() {
 })());
 
 
-},{"../grammar/url-validator":9}],24:[function(require,module,exports){
+},{"../grammar/url-validator":9}],25:[function(require,module,exports){
 var DEFAULT_HEADER, PREVIEW_HEADERS, PreviewApis;
 
 PREVIEW_HEADERS = require('../grammar/preview-headers');
@@ -1239,7 +1272,7 @@ module.exports = new (PreviewApis = (function() {
 })());
 
 
-},{"../grammar/preview-headers":7}],25:[function(require,module,exports){
+},{"../grammar/preview-headers":7}],26:[function(require,module,exports){
 var PreferLibraryOverNativePromises, allPromises, newPromise, ref, ref1, ref2;
 
 ref = require('../../helpers/promise-find-library'), newPromise = ref.newPromise, allPromises = ref.allPromises;
@@ -1275,7 +1308,20 @@ module.exports = new (PreferLibraryOverNativePromises = (function() {
 })());
 
 
-},{"../../helpers/promise-find-library":12,"../../helpers/promise-find-native":13,"../../helpers/promise-node":14}],26:[function(require,module,exports){
+},{"../../helpers/promise-find-library":12,"../../helpers/promise-find-native":13,"../../helpers/promise-node":14}],27:[function(require,module,exports){
+var UseNativePromises;
+
+module.exports = new (UseNativePromises = (function() {
+  function UseNativePromises() {}
+
+  UseNativePromises.prototype.promiseCreator = require('../../helpers/promise-find-native');
+
+  return UseNativePromises;
+
+})());
+
+
+},{"../../helpers/promise-find-native":13}],28:[function(require,module,exports){
 var ReadBinary, toQueryString;
 
 toQueryString = require('../helpers/querystring');
@@ -1334,7 +1380,7 @@ module.exports = new (ReadBinary = (function() {
 })());
 
 
-},{"../helpers/querystring":15}],27:[function(require,module,exports){
+},{"../helpers/querystring":15}],29:[function(require,module,exports){
 var SimpleVerbs, toQueryString,
   slice = [].slice;
 
@@ -1423,7 +1469,7 @@ module.exports = new (SimpleVerbs = (function() {
 })());
 
 
-},{"../helpers/querystring":15}],28:[function(require,module,exports){
+},{"../helpers/querystring":15}],30:[function(require,module,exports){
 var UsePostInsteadOfPatch;
 
 module.exports = new (UsePostInsteadOfPatch = (function() {
@@ -1444,7 +1490,7 @@ module.exports = new (UsePostInsteadOfPatch = (function() {
 })());
 
 
-},{}],29:[function(require,module,exports){
+},{}],31:[function(require,module,exports){
 var filter, forEach, plus;
 
 filter = require('lodash/internal/arrayFilter');
@@ -1514,7 +1560,7 @@ plus = {
 module.exports = plus;
 
 
-},{"lodash/internal/arrayEach":1,"lodash/internal/arrayFilter":2}],30:[function(require,module,exports){
+},{"lodash/internal/arrayEach":1,"lodash/internal/arrayFilter":2}],32:[function(require,module,exports){
 var Requester, ajax, eventId, extend, filter, forEach, ref;
 
 ref = require('./plus'), filter = ref.filter, forEach = ref.forEach, extend = ref.extend;
@@ -1525,7 +1571,6 @@ ajax = function(options, cb) {
     XMLHttpRequest = window.XMLHttpRequest;
   } else {
     req = require;
-    XMLHttpRequest = req('xmlhttprequest').XMLHttpRequest;
   }
   xhr = new XMLHttpRequest();
   xhr.dataType = options.dataType;
@@ -1583,6 +1628,7 @@ module.exports = Requester = (function() {
       requestMiddleware = arg.requestMiddleware;
       return requestMiddleware;
     });
+    this._plugins = plugins;
   }
 
   Requester.prototype.request = function(method, path, data, options, cb) {
@@ -1710,6 +1756,7 @@ module.exports = Requester = (function() {
             }
             acc = {
               clientOptions: _this._clientOptions,
+              plugins: _this._plugins,
               data: data,
               options: options,
               jqXHR: jqXHR,
@@ -1747,7 +1794,7 @@ module.exports = Requester = (function() {
 })();
 
 
-},{"./plus":29}],31:[function(require,module,exports){
+},{"./plus":31}],33:[function(require,module,exports){
 var VerbMethods, extend, filter, forOwn, ref, toPromise, toQueryString,
   slice = [].slice;
 
@@ -1855,5 +1902,5 @@ module.exports = VerbMethods = (function() {
 })();
 
 
-},{"./helpers/querystring":15,"./plus":29}]},{},[16])(16)
+},{"./helpers/querystring":15,"./plus":31}]},{},[16])(16)
 });
