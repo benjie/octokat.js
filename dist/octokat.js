@@ -854,7 +854,7 @@ module.exports = new (CacheHandler = (function() {
   };
 
   CacheHandler.prototype.responseMiddleware = function(arg) {
-    var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref1, request, status;
+    var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref, request, status;
     clientOptions = arg.clientOptions, request = arg.request, status = arg.status, jqXHR = arg.jqXHR, data = arg.data;
     if (!jqXHR) {
       return;
@@ -863,8 +863,13 @@ module.exports = new (CacheHandler = (function() {
       method = request.method, path = request.path;
       cacheHandler = clientOptions.cacheHandler || this;
       if (status === 304 || status === 0) {
-        ref1 = cacheHandler.get(method, path), data = ref1.data, status = ref1.status;
-        data.__IS_CACHED = ref.eTag || true;
+        ref = cacheHandler.get(method, path);
+        if (ref) {
+          data = ref.data, status = ref.status, eTag = ref.eTag;
+          data.__IS_CACHED = eTag || true;
+        } else {
+          throw new Error('ERROR: Bug in Octokat cacheHandler. It had an eTag but not the cached response');
+        }
       } else {
         if (method === 'GET' && jqXHR.getResponseHeader('ETag')) {
           eTag = jqXHR.getResponseHeader('ETag');
@@ -961,6 +966,9 @@ var FetchAll, fetchNextPage, getMore, pushAll, toQueryString;
 toQueryString = require('../helpers/querystring');
 
 pushAll = function(target, source) {
+  if (!Array.isArray(source)) {
+    throw new Error('Octokat Error: Calling fetchAll on a request that does not yield an array');
+  }
   return target.push.apply(target, source);
 };
 
@@ -986,7 +994,7 @@ fetchNextPage = function(obj, requester, cb) {
     obj.next_page.fetch(cb);
     return true;
   } else if (typeof obj.nextPageUrl === 'string') {
-    requester.request('GET', obj.nextPage, null, null, cb);
+    requester.request('GET', obj.nextPageUrl, null, null, cb);
     return true;
   } else if (obj.nextPage) {
     obj.nextPage.fetch(cb);
