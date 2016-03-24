@@ -190,54 +190,54 @@ define ['chai', 'cs!./test-config'], ({assert, expect}, {Octokat, client, USERNA
       describe 'Deprecated Notation', ->
         it "#{GH}.gists.public.fetch().then(results) -> results.nextPage()", (done) ->
           trapFail STATE[GH].gists.public.fetch()
-          .then (results) ->
-            results.nextPage()
-            .then (moreResults) ->
-              expect(moreResults).to.be.an('array')
-              expect(moreResults).to.have.length.at.least(1)
+          .then ({nextPage}) ->
+            nextPage()
+            .then ({items}) ->
+              expect(items).to.be.an('array')
+              expect(items).to.have.length.at.least(1)
               done()
 
         it "#{GH}.gists.public.fetch().then(results) -> results.prevPage()", (done) ->
           trapFail STATE[GH].gists.public.fetch()
-          .then (results) ->
-            results.nextPage()
-            .then (moreResults) ->
-              moreResults.prevPage()
+          .then ({nextPage}) ->
+            nextPage()
+            .then ({prevPage}) ->
+              prevPage()
               .then () ->
                 done()
 
         it "#{GH}.gists.public.fetch().then(results) -> results.firstPage()", (done) ->
           trapFail STATE[GH].gists.public.fetch()
-          .then (results) ->
-            results.nextPage()
-            .then (moreResults) ->
-              moreResults.firstPage()
+          .then ({nextPage}) ->
+            nextPage()
+            .then ({firstPage}) ->
+              firstPage()
               .then () ->
                 done()
 
         it "#{GH}.gists.public.fetch().then(results) -> results.lastPage()", (done) ->
           trapFail STATE[GH].gists.public.fetch()
-          .then (results) ->
-            results.lastPage()
-            .then (moreResults) ->
+          .then ({lastPage}) ->
+            lastPage()
+            .then ->
               done()
 
       describe 'New Notation', ->
         it "#{GH}.gists.public.fetch().then(results) -> results.nextPage.fetch()", (done) ->
           trapFail STATE[GH].gists.public.fetch()
-          .then (results) ->
-            results.nextPage.fetch()
-            .then (moreResults) ->
-              expect(moreResults).to.be.an('array')
-              expect(moreResults).to.have.length.at.least(1)
+          .then ({nextPage}) ->
+            nextPage.fetch()
+            .then ({items}) ->
+              expect(items).to.be.an('array')
+              expect(items).to.have.length.at.least(1)
               done()
 
         it "#{GH}.gists.public.fetch().then(results) -> results.prevPage.fetch()", (done) ->
           trapFail STATE[GH].gists.public.fetch()
-          .then (results) ->
-            results.nextPage.fetch()
-            .then (moreResults) ->
-              moreResults.prevPage.fetch()
+          .then ({nextPage}) ->
+            nextPage.fetch()
+            .then ({prevPage}) ->
+              prevPage.fetch()
               .then () ->
                 done()
 
@@ -321,9 +321,9 @@ define ['chai', 'cs!./test-config'], ({assert, expect}, {Octokat, client, USERNA
         # itIsOk(REPO, 'git.trees.create', {tree: [sha], base_tree: sha})
 
         it '.git.refs.tags.fetch()', () ->
-          STATE[GH].repos('philschatz', 'octokat.js').git.refs.tags.fetch().then (tags) ->
-            expect(tags).to.be.a('array')
-            expect(tags.length).to.equal(17)
+          STATE[GH].repos('philschatz', 'octokat.js').git.refs.tags.fetch().then ({items}) ->
+            expect(items).to.be.a('array')
+            expect(items.length).to.equal(17)
 
         it '.git.refs.tags("v0.1.1").fetch()', () ->
           STATE[GH].repos('philschatz', 'octokat.js').git.refs.tags('v0.1.1').fetch().then (tag) ->

@@ -854,7 +854,7 @@ module.exports = new (CacheHandler = (function() {
   };
 
   CacheHandler.prototype.responseMiddleware = function(arg) {
-    var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref, request, status;
+    var cacheHandler, clientOptions, data, eTag, jqXHR, method, path, ref1, request, status;
     clientOptions = arg.clientOptions, request = arg.request, status = arg.status, jqXHR = arg.jqXHR, data = arg.data;
     if (!jqXHR) {
       return;
@@ -863,7 +863,8 @@ module.exports = new (CacheHandler = (function() {
       method = request.method, path = request.path;
       cacheHandler = clientOptions.cacheHandler || this;
       if (status === 304 || status === 0) {
-        ref = cacheHandler.get(method, path), data = ref.data, status = ref.status;
+        ref1 = cacheHandler.get(method, path), data = ref1.data, status = ref1.status;
+        data.__IS_CACHED = ref.eTag || true;
       } else {
         if (method === 'GET' && jqXHR.getResponseHeader('ETag')) {
           eTag = jqXHR.getResponseHeader('ETag');
@@ -965,12 +966,12 @@ pushAll = function(target, source) {
 
 getMore = function(fetchable, requester, acc, cb) {
   var doStuff;
-  doStuff = function(err, items) {
+  doStuff = function(err, results) {
     if (err) {
       return cb(err);
     }
-    pushAll(acc, items);
-    return getMore(items, requester, acc, cb);
+    pushAll(acc, results.items);
+    return getMore(results, requester, acc, cb);
   };
   if (!fetchNextPage(fetchable, requester, doStuff)) {
     return cb(null, acc);
@@ -978,13 +979,13 @@ getMore = function(fetchable, requester, acc, cb) {
 };
 
 fetchNextPage = function(obj, requester, cb) {
-  if (typeof obj.next_page === 'string') {
+  if (typeof obj.next_page_url === 'string') {
     requester.request('GET', obj.next_page, null, null, cb);
     return true;
   } else if (obj.next_page) {
     obj.next_page.fetch(cb);
     return true;
-  } else if (typeof obj.nextPage === 'string') {
+  } else if (typeof obj.nextPageUrl === 'string') {
     requester.request('GET', obj.nextPage, null, null, cb);
     return true;
   } else if (obj.nextPage) {
@@ -1001,14 +1002,14 @@ module.exports = new (FetchAll = (function() {
   FetchAll.prototype.asyncVerbs = {
     fetchAll: function(requester, path) {
       return function(cb, query) {
-        return requester.request('GET', "" + path + (toQueryString(query)), null, null, function(err, items) {
+        return requester.request('GET', "" + path + (toQueryString(query)), null, null, function(err, results) {
           var acc;
           if (err) {
             return cb(err);
           }
           acc = [];
-          pushAll(acc, items);
-          return getMore(items, requester, acc, cb);
+          pushAll(acc, results.items);
+          return getMore(results, requester, acc, cb);
         });
       };
     }
@@ -1196,7 +1197,9 @@ module.exports = new (Pagination = (function() {
       return;
     }
     if (Array.isArray(data)) {
-      data = data.slice(0);
+      data = {
+        items: data.slice(0)
+      };
       links = jqXHR.getResponseHeader('Link');
       ref = (links != null ? links.split(',') : void 0) || [];
       for (i = 0, len = ref.length; i < len; i++) {
