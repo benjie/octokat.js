@@ -1,14 +1,5 @@
-(function webpackUniversalModuleDefinition(root, factory) {
-	if(typeof exports === 'object' && typeof module === 'object')
-		module.exports = factory();
-	else if(typeof define === 'function' && define.amd)
-		define([], factory);
-	else if(typeof exports === 'object')
-		exports["Octokat"] = factory();
-	else
-		root["Octokat"] = factory();
-})(this, function() {
-return /******/ (function(modules) { // webpackBootstrap
+module.exports =
+/******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
 
@@ -1284,7 +1275,7 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 16 */
 /***/ function(module, exports) {
 
-	module.exports = window.XMLHTTPRequest;
+	module.exports = require('xmlhttprequest');
 
 
 /***/ },
@@ -1694,7 +1685,10 @@ return /******/ (function(modules) { // webpackBootstrap
 /* 24 */
 /***/ function(module, exports) {
 
-	module.exports = window.Promise;
+	// Webpack tries to include this package when building for node
+	// Therefore, we stub it out and then tell webpack to noParse this file
+	// so that it is properly require'd in the node build.
+	module.exports = require('es6-promise');
 
 
 /***/ },
@@ -2166,6 +2160,4 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 /***/ }
-/******/ ])
-});
-;
+/******/ ]);

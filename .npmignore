@@ -1,5 +1,4 @@
 .*
-dist/octokat.js
 # src/
 test/
 bower.json
