@@ -615,7 +615,8 @@ module.exports =
 	    'issues': {
 	      'events': false,
 	      'comments': false,
-	      'labels': false
+	      'labels': false,
+	      'assignees': false
 	    },
 	    'git': {
 	      'refs': {
